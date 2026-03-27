@@ -46,13 +46,14 @@ Essa dor se desdobra em três camadas:
 
 1. Foco em **bula** como fonte de dados
 
-1. **IA generativa para feedback contextualizado (?)**
+2. **IA generativa para feedback contextualizado (?)**
 
 Enquanto a maioria dá um alerta genérico ("interação moderada"), você pode oferecer:
 
-- **Explicação em linguagem simples:** *"Este remédio para pressão pode reduzir o efeito do seu anticoncepcional. Consulte seu médico sobre ajuste."*
+- **Explicação em linguagem simples:** *"Este remédio para pressão pode reduzir o efeito do seu anticoncepcional. Consulte seu médico sobre ajuste."* 
+    - no caso de B2C
 - **Consideração de contexto:** idade, gênero, condições pré-existentes
-1. Modelo em API
+3. Modelo em API
 
 ## Como a startup ganharia dinheiro?
 
