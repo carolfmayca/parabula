@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
+from sqlalchemy import Column, Integer, String
 
 app = FastAPI()
 
@@ -8,13 +9,13 @@ class DrugRequest(BaseModel):
     drugs: List[str]
 
 # mock simples de medicamentos "existentes"
-VALID_DRUGS = [
-    "ibuprofeno",
-    "losartana",
-    "dipirona",
-    "paracetamol",
-    "varfarina"
-]
+# VALID_DRUGS = [
+#     "ibuprofeno",
+#     "losartana potássica",
+#     "dipirona",
+#     "paracetamol",
+#     "varfarina"
+# ]
 
 @app.post("/drug-interactions/check")
 def check_interactions(data: DrugRequest):
@@ -41,9 +42,14 @@ def check_interactions(data: DrugRequest):
         )
 
     # erro 3 -> medicamento não encontrado
-    for drug in data.drugs:
+    found_drugs = db.query(Drug).filter(
+        Drug.name.in_(data.drugs)
+    ).all()
 
-        if drug not in VALID_DRUGS:
+    found_names = [drug.name for drug in found_drugs]
+
+    for drug in data.drugs:
+        if drug not in found_names:
             raise HTTPException(
                 status_code=404,
                 detail={
@@ -52,18 +58,23 @@ def check_interactions(data: DrugRequest):
                 }
             )
 
-    interaction = True
-    severity = "low"
-    description = "Nenhuma interação relevante identificada."
+    #pegando as bulas
+    bulas = []
+    for drug in found_drugs:
+        bulas.append({
+            "name": drug.name,
+            "bula": drug.bula
+        })
+
+    summary = []
+    details = []
+
+    #passa as bulas para o modelo
+    #modelo retorna e a gente so adiciona em summary e details
 
     # resposta mockada
     return {
         "success": True,
-        "interactions_found": interaction,
-        "total_drugs": len(data.drugs),
-        "interaction": {
-            "drugs": data.drugs,
-            "severity": severity,
-            "description": description,
-        }
+        "summary": summary,
+        "details": details
     }
