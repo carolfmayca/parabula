@@ -1,5 +1,5 @@
 from openrouter import OpenRouter
-from processador_texto.processador_texto import get_interacoes
+from src.processador_texto.processador_texto import get_interacoes
 import os
 
 A = "cefalexina"
