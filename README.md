@@ -3,9 +3,6 @@
 Uma solução digital (inicialmente uma API) que verifica a segurança do uso de medicamentos considerando não apenas interações entre fármacos, mas também o perfil clínico do paciente (idade, gênero, gravidez, comorbidades, via de administração) e as informações oficiais das bulas dos medicamentos registrados no Brasil.
 
 
-
-# Respostas Prof
-
 ## Para quem é o produto?
 
 
@@ -35,10 +32,6 @@ Essa dor se desdobra em três camadas:
     - **Comorbidades** (ex: AINEs em pacientes com insuficiência renal)
     - **Via de administração errada** – adrenalina aplicada **por via intravenosa** para tratar uma crise de tosse, quando o correto seria **intramuscular**, levando à morte de um menino.
 3. **Falta de ferramentas acessíveis no ponto de decisão** – tanto profissionais de saúde quanto cuidadores e pacientes não têm um meio rápido, simples e confiável de cruzar **medicamento + paciente + contexto** antes de administrar ou dispensar um remédio.
-
-## Quais soluções já existem?
-
-### Interações medicamentosas:
 
 
 
@@ -74,20 +67,6 @@ Enquanto a maioria dá um alerta genérico ("interação moderada"), você pode 
 - Consultas grátis limitadas (ex: 5 interações por mês)
 - Upgrade para assinatura mensal (US$ 4,99/mês) com consultas ilimitadas + funcionalidades premium (histórico, relatórios para médicos)
 
-# To do
-
-## Top Prioridade
-
-- Fazer o pitch
-- Validar ideias com professor
-- Validar ideias com povo de farmácia
-- Verificar se será necessário fazer interface
-
-## Outros
-
-- Verificar qual SGBD vamos utilizar
-- Ter uma minibase de dados com medicamentos e suas bulas salvas para medicamentos que são mais comumente chamados/utilizados
-- Manter um dicionário com os nomes comerciais
 
 ---
 # Sobre o Repositório e Boas Práticas
