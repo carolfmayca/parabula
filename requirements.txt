@@ -1,5 +1,4 @@
 cloudscraper
-json
 annotated-types==0.7.0
 anyio==4.13.0
 certifi==2026.4.22
@@ -13,3 +12,7 @@ pydantic==2.13.4
 pydantic_core==2.46.4
 typing-inspection==0.4.2
 typing_extensions==4.15.0
+fastapi
+sqlalchemy
+supabase==2.13.0
+postgrest==0.16.2
