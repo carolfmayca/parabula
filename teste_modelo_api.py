@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
 from openrouter import OpenRouter
+from typing import List, Literal
 import os
 import json
 
@@ -13,16 +14,40 @@ app = FastAPI()
 # Inicializa o cliente do Supabase uma única vez na inicialização da API
 supabase_client = get_client()
 
+class Patient(BaseModel):
+    age: int
+    biological_sex: Literal["female", "male", "other"]
+    is_pregnant: bool
+    comorbidities: List[str]
 
 class DrugRequest(BaseModel):
     drugs: List[str]
-
+    patient: Patient
 
 @app.post("/drug-interactions/check")
 def check_interactions(data: DrugRequest):
 
     # padroniza tudo para minúsculo
     drugs = [drug.lower() for drug in data.drugs]
+
+    # ==========================================
+    # VALIDAÇÃO 0: Consistência dos dados do paciente
+    # ==========================================
+
+    if (
+        data.patient.is_pregnant
+        and data.patient.biological_sex != "female"
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_PATIENT_DATA",
+                "message": (
+                    "Apenas pacientes do sexo biológico feminino "
+                    "podem ser marcados como grávidos."
+                )
+            }
+        )
 
     # ==========================================
     # VALIDAÇÃO 1: Mínimo de 2 medicamentos
@@ -109,8 +134,19 @@ def check_interactions(data: DrugRequest):
     prompt = f"""
     Analise as informações das bulas abaixo.
 
+    Dados do paciente:
+
+    - Idade: {data.patient.age}
+    - Sexo biológico: {data.patient.biological_sex}
+    - Grávida: {data.patient.is_pregnant}
+    - Comorbidades: {", ".join(data.patient.comorbidities) if data.patient.comorbidities else "Nenhuma"}
+
     Medicamentos:
     {", ".join(drugs)}
+
+    Considere os medicamentos, a idade, o sexo biológico,
+    a gravidez e as comorbidades ao avaliar riscos,
+    contraindicações e interações medicamentosas.
 
     Verifique se existe interação medicamentosa entre eles.
 
