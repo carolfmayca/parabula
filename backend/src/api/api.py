@@ -1,3 +1,4 @@
+import unicodedata
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
@@ -6,15 +7,12 @@ from typing import List, Literal
 import os
 import json
 
-# Importando o cliente e as funções de busca do seu arquivo de banco de dados
 from backend.db.supabase_client import get_client, buscar_medicamento, buscar_bula
 
 app = FastAPI()
 
-# Inicializa o cliente do Supabase uma única vez na inicialização da API
 supabase_client = get_client()
 
-#tratamento de dados 
 def remover_acentos(texto: str) -> str:
     return ''.join(
         c for c in unicodedata.normalize('NFD', texto)
@@ -31,17 +29,190 @@ class DrugRequest(BaseModel):
     drugs: List[str]
     patient: Patient
 
+
+def chamar_modelo(client: OpenRouter, prompt: str) -> dict:
+    """Chama o modelo e já retorna o JSON parseado, lançando HTTPException se falhar."""
+    response = client.chat.send(
+        model="openai/gpt-oss-120b:free",
+        messages=[{"role": "user", "content": prompt}]
+    )
+    raw = response.choices[0].message.content
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": "INVALID_MODEL_RESPONSE",
+                "message": "O modelo retornou uma resposta inválida."
+            }
+        )
+
+
+def montar_bulas_texto(drugs: List[str]) -> str:
+    """
+    Para cada medicamento, busca no Supabase e monta o bloco de texto das bulas.
+    Lança HTTPException se algum medicamento não for encontrado.
+    """
+    bulas_texto = ""
+
+    for drug in drugs:
+        drug_busca = remover_acentos(drug)
+
+        medicamentos_encontrados = buscar_medicamento(supabase_client, drug_busca)
+
+        if not medicamentos_encontrados:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "code": "DRUG_NOT_FOUND",
+                    "message": f"Medicamento '{drug}' não encontrado no sistema."
+                }
+            )
+
+        med_registro = medicamentos_encontrados[0]
+        med_id = med_registro["id"]
+        nome_oficial = med_registro["principio_ativo"]
+
+        bula_registro = buscar_bula(supabase_client, med_id)
+
+        if not bula_registro:
+            conteudo_bula = "Informações de bula indisponíveis no banco de dados."
+        else:
+            secoes_bula = bula_registro["conteudo_json"]
+            conteudo_bula = ""
+            for secao_nome, secao_conteudo in secoes_bula.items(): 
+                if ( 
+                    ( "interac" in secao_nome.lower() or 
+                     "contraind" in secao_nome.lower() or 
+                     "advert" in secao_nome.lower() ) 
+                     and secao_conteudo ): 
+                    conteudo_bula += f"{secao_nome}:\n{secao_conteudo}\n"
+            if not conteudo_bula:
+                conteudo_bula = json.dumps(secoes_bula, ensure_ascii=False, indent=2)
+
+        bulas_texto += f"""
+        Medicamento: {nome_oficial} (Buscado como: {drug})
+
+        Informações da bula:
+        {conteudo_bula}
+
+        ------------------------
+        """
+
+    return bulas_texto
+
+
+def prompt_interacoes(drugs: List[str], bulas_texto: str) -> str:
+    """
+    Prompt focado APENAS em interações entre os medicamentos.
+    Não recebe dados do paciente — evita que o modelo misture os contextos.
+    """
+    return f"""
+    Você é um sistema especializado em farmacologia clínica.
+    Sua tarefa é identificar interações medicamentosas entre os medicamentos listados,
+    com base exclusivamente nas informações das bulas fornecidas.
+
+    Medicamentos:
+    {", ".join(drugs)}
+
+    RESPONDA APENAS EM JSON VÁLIDO, sem texto fora do JSON.
+
+    Formato obrigatório:
+    {{
+      "summary": {{
+        "interactions_found": true,
+        "severity": "high",
+        "description": "resumo curto citando explicitamente os medicamentos envolvidos e os principais riscos da interação"
+      }},
+      "details": [
+        {{
+          "drugs": ["medicamento A", "medicamento B"],
+          "severity": "high",
+          "description": "descrição detalhada da interação entre esses medicamentos"
+        }}
+      ]
+    }}
+
+    Regras:
+    - Analise APENAS interações entre os medicamentos. Ignore dados do paciente.
+    - Não escreva texto fora do JSON.
+    - Use severity como: low, medium ou high.
+    - Se não houver interação relevante, retorne interactions_found como false e details como lista vazia.
+    - O summary.description deve citar explicitamente os medicamentos envolvidos.
+    - Baseie-se EXCLUSIVAMENTE nas informações das bulas fornecidas. Se uma interação não estiver descrita nas bulas, não a reporte.
+
+    Informações das bulas:
+    {bulas_texto}
+"""
+
+
+def prompt_riscos_clinicos(drugs: List[str], patient: Patient, bulas_texto: str) -> str:
+    """
+    Prompt focado APENAS nos riscos clínicos do perfil do paciente com cada medicamento.
+    Avalia comorbidades, faixa etária e gravidez — sem analisar interações entre medicamentos.
+    """
+    comorbidades_str = (
+        ", ".join(patient.comorbidities) if patient.comorbidities else "Nenhuma"
+    )
+
+    return f"""
+    Você é um sistema especializado em farmacologia clínica.
+    Sua tarefa é avaliar se algum dos medicamentos listados apresenta riscos, contraindicações
+    ou alertas específicos para o perfil clínico do paciente abaixo.
+
+    Perfil do paciente:
+    - Idade: {patient.age} anos
+    - Sexo biológico: {patient.biological_sex}
+    - Grávida: {patient.is_pregnant}
+    - Comorbidades: {comorbidades_str}
+
+    Medicamentos:
+    {", ".join(drugs)}
+
+    Avalie três categorias de risco clínico:
+    1. Contraindicações ou cautelas por comorbidade (ex: AINE em paciente hipertenso)
+    2. Riscos por faixa etária (ex: sedativos em idosos, doses em crianças)
+    3. Contraindicações ou cautelas na gravidez (apenas se is_pregnant for true)
+
+    RESPONDA APENAS EM JSON VÁLIDO, sem texto fora do JSON.
+
+    Formato obrigatório:
+    {{
+      "risks_found": true,
+      "severity": "high",
+      "items": [
+        {{
+          "drug": "nome do medicamento",
+          "severity": "high",
+          "description": "descrição detalhada do risco para este paciente"
+        }}
+      ]
+    }}
+
+    Regras:
+    - Analise APENAS riscos do medicamento com o perfil do paciente. Não analise interações entre medicamentos.
+    - Se is_pregnant for false, não avalie riscos de gravidez.
+    - Use severity como: low, medium ou high.
+    - O severity raiz deve refletir o maior severity encontrado nos items.
+    - Se não houver nenhum risco, retorne risks_found como false e items como lista vazia.
+    - Não escreva texto fora do JSON.
+    - Baseie-se EXCLUSIVAMENTE nas informações das bulas fornecidas. Se um risco não estiver descrito nas bulas, não o reporte.
+    - NÃO reporte interações entre medicamentos. Isso é responsabilidade de outro sistema. Reporte APENAS riscos decorrentes do perfil do paciente (comorbidades, idade, gravidez). 
+    - Se o único risco identificado for uma interação entre medicamentos, retorne risks_found como false e items como lista vazia.
+
+    Informações das bulas:
+    {bulas_texto}
+"""
+
+
 @app.post("/drug-interactions/check")
 def check_interactions(data: DrugRequest):
 
-    # padroniza tudo para minúsculo
     drugs = [drug.lower() for drug in data.drugs]
 
     # VALIDAÇÃO 0: Consistência dos dados do paciente
-    if (
-        data.patient.is_pregnant
-        and data.patient.biological_sex != "female"
-    ):
+    if data.patient.is_pregnant and data.patient.biological_sex != "female":
         raise HTTPException(
             status_code=400,
             detail={
@@ -73,148 +244,33 @@ def check_interactions(data: DrugRequest):
             }
         )
 
-    # BUSCA NO BANCO E MONTAGEM DO TEXTO DAS BULAS
-    bulas_texto = ""
+    # BUSCA DAS BULAS (única vez, reutilizado nos dois prompts)
+    bulas_texto = montar_bulas_texto(drugs)
 
-    for drug in drugs:
-        # versão normalizada apenas para consulta
-        drug_busca = remover_acentos(drug)
+    client = OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY"))
 
-        # Busca o medicamento no Supabase (por princípio ativo ou alias)
-        medicamentos_encontrados = buscar_medicamento(
-            supabase_client,
-            drug_busca
-        )
-
-        # Se a lista voltar vazia, o medicamento não existe no banco (Substitui o VALID_DRUGS)
-        if not medicamentos_encontrados:
-            raise HTTPException(
-                status_code=404,
-                detail={
-                    "code": "DRUG_NOT_FOUND",
-                    "message": f"Medicamento '{drug}' não encontrado no sistema."
-                }
-            )
-        
-        # Pega o primeiro registro correspondente encontrado
-        med_registro = medicamentos_encontrados[0]
-        med_id = med_registro["id"]
-        nome_oficial = med_registro["principio_ativo"]
-
-        # Busca a bula vigente associada ao ID desse medicamento no banco
-        bula_registro = buscar_bula(supabase_client, med_id)
-
-        if not bula_registro:
-            # Caso o medicamento exista, mas não tenha nenhuma bula cadastrada ainda
-            interacoes_texto = "Informações de bula indisponíveis no banco de dados."
-        else:
-            # Pega o dicionário de seções gravado na coluna JSONB (conteudo_json)
-            secoes_bula = bula_registro["conteudo_json"]
-            
-            # varre o JSON procurando por seções que falem de interações.
-            interacoes_texto = ""
-            for secao_nome, secao_conteudo in secoes_bula.items():
-                if "interac" in secao_nome.lower() and secao_conteudo:
-                    interacoes_texto += f"{secao_nome}:\n{secao_conteudo}\n"
-            
-            # Se a estrutura do JSON não tiver uma chave explícita com o termo "interac",
-            # passamos o JSON inteiro e deixamos o LLM analisar tudo (garante resiliência).
-            if not interacoes_texto:
-                interacoes_texto = json.dumps(secoes_bula, ensure_ascii=False, indent=2)
-
-        # Agrupa os textos das bulas recuperados do Supabase
-        bulas_texto += f"""
-        Medicamento: {nome_oficial} (Buscado como: {drug})
-
-        Interações medicamentosas:
-        {interacoes_texto}
-
-        ------------------------
-        """
-
-    # PROMPT PARA O MODELO
-    prompt = f"""
-    Analise as informações das bulas abaixo.
-
-    Dados do paciente:
-
-    - Idade: {data.patient.age}
-    - Sexo biológico: {data.patient.biological_sex}
-    - Grávida: {data.patient.is_pregnant}
-    - Comorbidades: {", ".join(data.patient.comorbidities) if data.patient.comorbidities else "Nenhuma"}
-
-    Medicamentos:
-    {", ".join(drugs)}
-
-    Considere os medicamentos, a idade, o sexo biológico,
-    a gravidez e as comorbidades ao avaliar riscos,
-    contraindicações e interações medicamentosas.
-
-    Verifique se existe interação medicamentosa entre eles.
-
-    RESPONDA APENAS EM JSON VÁLIDO.
-
-    Formato obrigatório:
-
-    {{
-      "summary": {{
-        "interactions_found": true,
-        "severity": "high",
-        "description": "resumo curto citando explicitamente os medicamentos envolvidos nas interações mais relevantes e seus principais riscos"
-      }},
-      "details": [
-        {{
-          "drugs": ["medicamento A", "medicamento B"],
-          "severity": "high",
-          "description": "descrição detalhada"
-        }}
-      ]
-    }}
-
-    Regras:
-    - Não escreva texto fora do JSON
-    - Use severity como: low, medium ou high
-    - Se não houver interação relevante, ainda retorne o JSON
-    - details pode conter múltiplas interações
-    - O summary deve permitir que um usuário identifique rapidamente quais medicamentos apresentam risco sem precisar ler os detalhes.
-    - O campo summary.description deve citar explicitamente os medicamentos envolvidos nas interações mais relevantes.
-
-    Informações:
-    {bulas_texto}
-    """
-
-    # CHAMADA DO OPENROUTER
-    client = OpenRouter(
-        api_key=os.getenv("OPENROUTER_API_KEY")
+    # PROMPT 1: interações entre medicamentos
+    resultado_interacoes = chamar_modelo(
+        client,
+        prompt_interacoes(drugs, bulas_texto)
     )
 
-    response = client.chat.send(
-        model="openai/gpt-oss-120b:free",
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
+    # PROMPT 2: riscos clínicos do perfil do paciente
+    resultado_riscos = chamar_modelo(
+        client,
+        prompt_riscos_clinicos(drugs, data.patient, bulas_texto)
     )
-
-    model_response = response.choices[0].message.content
-
-    # CONVERTE JSON DO MODELO E RETORNA
-    try:
-        parsed_response = json.loads(model_response)
-    except json.JSONDecodeError:
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "code": "INVALID_MODEL_RESPONSE",
-                "message": "O modelo retornou uma resposta inválida."
-            }
-        )
 
     return {
         "success": True,
         "drugs": drugs,
-        "summary": parsed_response["summary"],
-        "details": parsed_response["details"]
-    }
+        "interactions": {
+            "summary": resultado_interacoes["summary"],
+            "details": resultado_interacoes["details"]
+        },
+        "clinical_risks": {
+            "risks_found": resultado_riscos["risks_found"],
+            "severity": resultado_riscos["severity"],
+            "items": resultado_riscos["items"]
+        }
+    }   
