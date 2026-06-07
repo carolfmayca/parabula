@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
 *{
     margin:0;
     padding:0;
@@ -21,8 +23,20 @@ body{
     border-bottom:1px solid #ddd;
 }
 
+.logo {
+    display: flex;
+    align-items: center;
+}
+
 .logo img{
-    height:50px;
+    height:70px;
+    width: 87px;
+}
+.logo span{
+    font-size:32px;
+    color:#14453E;
+    margin-left:10px;
+    font-family: 'Poppins', sans-serif;
 }
 
 nav{
@@ -171,4 +185,142 @@ textarea{
     text-align:center;
     margin-top:30px;
     color:#666;
+}
+
+/* RESULTADOS */
+
+.results-layout {
+    display: flex;
+    gap: 60px;
+}
+
+.results-left {
+    flex: 1;
+}
+
+.results-right {
+    flex: 1;
+}
+
+.results-right h3 {
+    color: #004d40;
+    margin-bottom: 16px;
+}
+
+/* Contexto do paciente */
+
+.patient-context {
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.patient-context h3 {
+    color: #004d40;
+    margin-bottom: 12px;
+}
+
+.patient-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+    color: #444;
+}
+
+.patient-comorbidades {
+    color: #444;
+}
+
+/* Resumo */
+
+.summary-box {
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 16px;
+}
+
+.summary-box h3 {
+    color: #004d40;
+    margin-bottom: 12px;
+}
+
+.summary-box p {
+    color: #555;
+    margin: 12px 0;
+}
+
+.summary-alert {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff0f0;
+    border: 1px solid #f5c2c2;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 12px;
+    color: #c0392b;
+}
+
+.severity-counts {
+    display: flex;
+    gap: 12px;
+    margin: 12px 0;
+}
+
+.badge-alta   { background: #fde8e8; color: #c0392b; padding: 4px 10px; border-radius: 6px; font-size: 14px; }
+.badge-moderada { background: #fef3e2; color: #d35400; padding: 4px 10px; border-radius: 6px; font-size: 14px; }
+.badge-baixa  { background: #eafaf1; color: #1e8449; padding: 4px 10px; border-radius: 6px; font-size: 14px; }
+
+.summary-hint {
+    color: #888;
+    font-size: 13px;
+}
+
+/* Itens de interação */
+
+.interaction-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 12px;
+    cursor: pointer;
+}
+
+.interaction-item.high   { border-left: 4px solid #e74c3c; }
+.interaction-item.medium { border-left: 4px solid #e67e22; }
+.interaction-item.low    { border-left: 4px solid #27ae60; }
+
+.severity-tag {
+    color: white;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: bold;
+    font-size: 13px;
+    min-width: 90px;
+    text-align: center;
+}
+
+.severity-tag.alta     { background: #e74c3c; }
+.severity-tag.moderada { background: #e67e22; }
+.severity-tag.baixa    { background: #27ae60; }
+
+.interaction-name {
+    flex: 1;
+    color: #333;
+}
+
+.arrow {
+    font-size: 24px;
+    color: #aaa;
+}
+
+.icon-btn {
+    height: 24px;
+    width: 24px;
+    vertical-align: middle;
 }

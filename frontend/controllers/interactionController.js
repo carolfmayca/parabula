@@ -8,3 +8,7 @@ exports.index = (req, res) => {
     });
 
 };
+
+exports.results = (req, res) => {
+    res.render("results");
+};
