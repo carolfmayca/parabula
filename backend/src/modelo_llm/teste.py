@@ -1,6 +1,6 @@
-import src.modelo_llm.prompts as prompts
-import src.processador_texto.processador_texto as pt
-import src.modelo_llm.open_router as open_router
+import backend.src.modelo_llm.prompts as prompts
+import backend.src.processador_texto.processador_texto as pt
+import backend.src.modelo_llm.open_router as open_router
 
 # interações médicas 2 remédios 
 A = "Cefalexina"

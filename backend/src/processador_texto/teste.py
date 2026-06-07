@@ -1,4 +1,4 @@
-from processador_texto.processador_texto import get_interacoes   
+from backend.src.processador_texto.processador_texto import get_interacoes   
 
 while True:
     texto = input("Digite um texto (ou 'sair' para encerrar): ")

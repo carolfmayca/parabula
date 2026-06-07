@@ -7,7 +7,7 @@ import os
 import json
 
 # Importando o cliente e as funções de busca do seu arquivo de banco de dados
-from db.supabase_client import get_client, buscar_medicamento, buscar_bula
+from backend.db.supabase_client import get_client, buscar_medicamento, buscar_bula
 
 app = FastAPI()
 
@@ -30,10 +30,7 @@ def check_interactions(data: DrugRequest):
     # padroniza tudo para minúsculo
     drugs = [drug.lower() for drug in data.drugs]
 
-    # ==========================================
     # VALIDAÇÃO 0: Consistência dos dados do paciente
-    # ==========================================
-
     if (
         data.patient.is_pregnant
         and data.patient.biological_sex != "female"
@@ -49,9 +46,7 @@ def check_interactions(data: DrugRequest):
             }
         )
 
-    # ==========================================
     # VALIDAÇÃO 1: Mínimo de 2 medicamentos
-    # ==========================================
     if len(drugs) < 2:
         raise HTTPException(
             status_code=400,
@@ -61,9 +56,7 @@ def check_interactions(data: DrugRequest):
             }
         )
 
-    # ==========================================
     # VALIDAÇÃO 2: Medicamentos duplicados
-    # ==========================================
     if len(drugs) != len(set(drugs)):
         raise HTTPException(
             status_code=400,
@@ -73,9 +66,7 @@ def check_interactions(data: DrugRequest):
             }
         )
 
-    # ==========================================
     # BUSCA NO BANCO E MONTAGEM DO TEXTO DAS BULAS
-    # ==========================================
     bulas_texto = ""
 
     for drug in drugs:
@@ -128,9 +119,7 @@ def check_interactions(data: DrugRequest):
         ------------------------
         """
 
-    # ==========================================
     # PROMPT PARA O MODELO
-    # ==========================================
     prompt = f"""
     Analise as informações das bulas abaixo.
 
@@ -179,9 +168,7 @@ def check_interactions(data: DrugRequest):
     {bulas_texto}
     """
 
-    # ==========================================
     # CHAMADA DO OPENROUTER
-    # ==========================================
     client = OpenRouter(
         api_key=os.getenv("OPENROUTER_API_KEY")
     )
@@ -198,9 +185,7 @@ def check_interactions(data: DrugRequest):
 
     model_response = response.choices[0].message.content
 
-    # ==========================================
     # CONVERTE JSON DO MODELO E RETORNA
-    # ==========================================
     try:
         parsed_response = json.loads(model_response)
     except json.JSONDecodeError:
