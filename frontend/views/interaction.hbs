@@ -1,0 +1,133 @@
+<header class="navbar">
+
+    <div class="logo">
+        <img src="/img/logo.svg" alt="ParaBula">
+    </div>
+
+    <nav>
+        <a href="#">Menu</a>
+        <a href="#">Menu</a>
+        <a href="#">Menu</a>
+        <a href="#">Equipe</a>
+    </nav>
+
+    <button class="btn-top">
+        INTERAGIR
+    </button>
+
+</header>
+
+<main class="container">
+
+    <h1>Interação Inicial</h1>
+
+    <div class="content">
+
+        <!-- CARD MEDICAMENTOS -->
+
+        <section class="card">
+
+            <h2>1. Medicamentos da nova prescrição</h2>
+
+            <p>
+                Informe os medicamentos que você pretende prescrever.
+            </p>
+
+            {{#each medicamentos}}
+            <div class="medicine-item">
+
+                <span>{{this}}</span>
+
+                <button>x</button>
+
+            </div>
+            {{/each}}
+
+            <button class="add-btn">
+                + Adicionar medicamento
+            </button>
+
+        </section>
+
+        <!-- CARD PACIENTE -->
+
+        <section class="card">
+
+            <h2>2. Dados do Paciente</h2>
+
+            <p>
+                Informe os dados clínicos relevantes do paciente.
+            </p>
+
+            <div class="field">
+                <label>Idade</label>
+
+                <div class="idade">
+                    <input type="number">
+                    <span>anos</span>
+                </div>
+            </div>
+
+            <div class="field">
+
+                <label>Sexo Biológico</label>
+
+                <div class="radio-group">
+                    <label>
+                        <input type="radio" name="sexo">
+                        Feminino
+                    </label>
+
+                    <label>
+                        <input type="radio" name="sexo">
+                        Masculino
+                    </label>
+                </div>
+
+            </div>
+
+            <div class="field">
+
+                <label>Gestante?</label>
+
+                <div class="radio-group">
+
+                    <label>
+                        <input type="radio" name="gestante">
+                        Sim
+                    </label>
+
+                    <label>
+                        <input type="radio" name="gestante">
+                        Não
+                    </label>
+
+                </div>
+
+            </div>
+
+            <div class="field">
+
+                <label>Comorbidades</label>
+
+                <textarea rows="5"></textarea>
+
+            </div>
+
+        </section>
+
+    </div>
+
+    <div class="action">
+
+        <button class="btn-search">
+            ANALISAR INTERAÇÕES
+        </button>
+
+    </div>
+
+    <p class="footer-text">
+        As análises são baseadas nas bulas e não substituem o julgamento clínico.
+    </p>
+
+</main>

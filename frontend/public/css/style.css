@@ -1,0 +1,174 @@
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial, Helvetica, sans-serif;
+}
+
+body{
+    background:#f7f7f7;
+}
+
+/* NAVBAR */
+
+.navbar{
+    height:90px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:0 40px;
+    background:white;
+    border-bottom:1px solid #ddd;
+}
+
+.logo img{
+    height:50px;
+}
+
+nav{
+    display:flex;
+    gap:50px;
+}
+
+nav a{
+    text-decoration:none;
+    color:black;
+    font-weight:600;
+}
+
+.btn-top{
+    background:#07a37b;
+    color:white;
+    border:none;
+    border-radius:25px;
+    padding:12px 25px;
+    cursor:pointer;
+}
+
+/* CONTEÚDO */
+
+.container{
+    width:90%;
+    margin:40px auto;
+    background:white;
+    border:1px solid #ddd;
+    border-radius:10px;
+    padding:40px;
+}
+
+.container h1{
+    color:#004d40;
+    margin-bottom:40px;
+}
+
+.content{
+    display:flex;
+    justify-content:center;
+    gap:80px;
+}
+
+.card{
+    width:450px;
+    border:1px solid #ddd;
+    border-radius:10px;
+    padding:20px;
+}
+
+.card h2{
+    color:#005e54;
+    font-size:24px;
+    margin-bottom:8px;
+}
+
+.card p{
+    margin-bottom:20px;
+    color:#666;
+}
+
+.medicine-item{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    border:1px solid #ddd;
+    border-radius:8px;
+    padding:12px;
+    margin-bottom:10px;
+}
+
+.medicine-item button{
+    border:none;
+    background:none;
+    font-size:20px;
+    cursor:pointer;
+}
+
+.add-btn{
+    width:100%;
+    border:1px solid #ddd;
+    background:white;
+    padding:15px;
+    border-radius:8px;
+    color:#005e54;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.field{
+    margin-bottom:20px;
+}
+
+.field label{
+    display:block;
+    margin-bottom:10px;
+    font-weight:bold;
+}
+
+.idade{
+    display:flex;
+    width:120px;
+}
+
+.idade input{
+    width:60px;
+}
+
+.idade span{
+    border:1px solid #ccc;
+    padding:8px;
+}
+
+.radio-group{
+    display:flex;
+    gap:30px;
+}
+
+textarea{
+    width:100%;
+    resize:none;
+    padding:10px;
+}
+
+/* BOTÃO */
+
+.action{
+    display:flex;
+    justify-content:center;
+    margin-top:50px;
+}
+
+.btn-search{
+    background:#004d40;
+    color:white;
+    border:none;
+    border-radius:8px;
+    padding:15px 30px;
+    font-size:16px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.footer-text{
+    text-align:center;
+    margin-top:30px;
+    color:#666;
+}
