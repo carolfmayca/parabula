@@ -14,6 +14,13 @@ app = FastAPI()
 # Inicializa o cliente do Supabase uma única vez na inicialização da API
 supabase_client = get_client()
 
+#tratamento de dados 
+def remover_acentos(texto: str) -> str:
+    return ''.join(
+        c for c in unicodedata.normalize('NFD', texto)
+        if unicodedata.category(c) != 'Mn'
+    )
+
 class Patient(BaseModel):
     age: int
     biological_sex: Literal["female", "male", "other"]
@@ -70,8 +77,14 @@ def check_interactions(data: DrugRequest):
     bulas_texto = ""
 
     for drug in drugs:
+        # versão normalizada apenas para consulta
+        drug_busca = remover_acentos(drug)
+
         # Busca o medicamento no Supabase (por princípio ativo ou alias)
-        medicamentos_encontrados = buscar_medicamento(supabase_client, drug)
+        medicamentos_encontrados = buscar_medicamento(
+            supabase_client,
+            drug_busca
+        )
 
         # Se a lista voltar vazia, o medicamento não existe no banco (Substitui o VALID_DRUGS)
         if not medicamentos_encontrados:
@@ -147,7 +160,7 @@ def check_interactions(data: DrugRequest):
       "summary": {{
         "interactions_found": true,
         "severity": "high",
-        "description": "descrição curta"
+        "description": "resumo curto citando explicitamente os medicamentos envolvidos nas interações mais relevantes e seus principais riscos"
       }},
       "details": [
         {{
@@ -163,6 +176,8 @@ def check_interactions(data: DrugRequest):
     - Use severity como: low, medium ou high
     - Se não houver interação relevante, ainda retorne o JSON
     - details pode conter múltiplas interações
+    - O summary deve permitir que um usuário identifique rapidamente quais medicamentos apresentam risco sem precisar ler os detalhes.
+    - O campo summary.description deve citar explicitamente os medicamentos envolvidos nas interações mais relevantes.
 
     Informações:
     {bulas_texto}
