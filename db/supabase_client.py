@@ -30,6 +30,7 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 BULAS_AGRUPADAS = Path("bulas_json/bulas_agrupadas.json")
+RELATORIO_BULAS = Path("bulas_pdf/relatorio_bulas.json")
 
 
 def get_client() -> Client:
@@ -111,6 +112,34 @@ def inserir_bula(
     return resultado.data[0]
 
 
+def inserir_alias(
+    client: Client, medicamento_id: int, alias: str, tipo_alias: str = "comercial"
+) -> dict:
+    """Insere um alias para um medicamento. Retorna o existente se já existir."""
+    existente = (
+        client.table("medicamento_alias")
+        .select("*")
+        .ilike("alias", alias)
+        .execute()
+    )
+
+    if existente.data:
+        return existente.data[0]
+
+    resultado = (
+        client.table("medicamento_alias")
+        .insert(
+            {
+                "medicamento_id": medicamento_id,
+                "alias": alias,
+                "tipo_alias": tipo_alias,
+            }
+        )
+        .execute()
+    )
+    return resultado.data[0]
+
+
 # ============================================================================
 # OPERAÇÕES DE LEITURA
 # ============================================================================
@@ -174,6 +203,79 @@ def listar_medicamentos(client: Client) -> list[dict]:
 # ============================================================================
 
 
+def nome_bula_do_pdf_path(caminho: str) -> str:
+    """Extrai a chave da bula a partir do caminho do PDF."""
+    return Path(caminho).stem.replace("bula_profissional_", "")
+
+
+def carregar_mapa_alias_comercial(caminho: Path = RELATORIO_BULAS) -> dict[str, str]:
+    """
+    Monta mapa nome_comercial -> principio_ativo a partir do relatório de download.
+
+    Exemplo:
+      comercial_tazocin -> principio_piperacilina... vira
+      {"tazocin": "piperacilina sodica, tazobactam sodico"}
+    """
+    if not caminho.exists():
+        return {}
+
+    with open(caminho, "r", encoding="utf-8") as f:
+        relatorio = json.load(f)
+
+    comerciais_por_nome = {}
+    mapa_alias = {}
+
+    for item in relatorio:
+        arquivo = item.get("arquivo")
+        origem = item.get("origem", "")
+        if not arquivo:
+            continue
+
+        nome_bula = nome_bula_do_pdf_path(arquivo)
+
+        if nome_bula.startswith("comercial_"):
+            alias = nome_bula.replace("comercial_", "", 1)
+            produto = item.get("produto")
+            if produto:
+                comerciais_por_nome[produto.strip().lower()] = alias
+            comerciais_por_nome[alias.strip().lower()] = alias
+            continue
+
+        if not nome_bula.startswith("principio_"):
+            continue
+
+        prefixo_origem = "princípio ativo de "
+        if not origem.startswith(prefixo_origem):
+            continue
+
+        nome_comercial = origem.replace(prefixo_origem, "", 1).strip().lower()
+        alias = comerciais_por_nome.get(nome_comercial)
+        if not alias:
+            continue
+
+        principio = nome_bula.replace("principio_", "", 1)
+        mapa_alias[alias] = principio
+
+    return mapa_alias
+
+
+def resolver_nome_medicamento(nome_bula: str, mapa_alias: dict[str, str]) -> tuple[str, str | None]:
+    """
+    Resolve a chave da bula para o princípio ativo e, se aplicável, o alias comercial.
+    """
+    if nome_bula.startswith("comercial_"):
+        alias = nome_bula.replace("comercial_", "", 1)
+        principio = mapa_alias.get(alias)
+        if principio:
+            return principio, alias
+        return alias, None
+
+    if nome_bula.startswith("principio_"):
+        return nome_bula.replace("principio_", "", 1), None
+
+    return nome_bula, None
+
+
 def carregar_bulas_json(client: Client, caminho: Path = BULAS_AGRUPADAS):
     """Carrega todas as bulas do arquivo agrupado para o Supabase."""
     if not caminho.exists():
@@ -184,20 +286,35 @@ def carregar_bulas_json(client: Client, caminho: Path = BULAS_AGRUPADAS):
         bulas = json.load(f)
 
     print(f"Carregando {len(bulas)} bulas para o Supabase...\n")
+    mapa_alias = carregar_mapa_alias_comercial()
+    aliases_inseridos = 0
 
     for nome, conteudo in bulas.items():
+        principio_ativo, alias_comercial = resolver_nome_medicamento(nome, mapa_alias)
+
         # Inserir/buscar medicamento
-        medicamento = inserir_medicamento(client, nome)
+        medicamento = inserir_medicamento(client, principio_ativo)
         med_id = medicamento["id"]
+
+        if alias_comercial:
+            inserir_alias(client, med_id, alias_comercial, tipo_alias="comercial")
+            aliases_inseridos += 1
 
         # Inserir bula
         pdf_path = f"bulas_pdf/bula_profissional_{nome}.pdf"
         bula = inserir_bula(client, med_id, conteudo, pdf_path)
 
         status = "já existia" if bula.get("vigente") else "inserida"
-        print(f"  ✓ {nome} (id={med_id}) - bula {status}")
+        if alias_comercial:
+            print(
+                f"  ✓ {nome} -> {principio_ativo} (id={med_id}) - "
+                f"alias '{alias_comercial}' - bula {status}"
+            )
+        else:
+            print(f"  ✓ {principio_ativo} (id={med_id}) - bula {status}")
 
-    print(f"\nConcluído! {len(bulas)} medicamentos processados.")
+    print(f"\nConcluído! {len(bulas)} bulas processadas.")
+    print(f"Aliases comerciais inseridos/encontrados: {aliases_inseridos}")
 
 
 # ============================================================================
