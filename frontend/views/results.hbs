@@ -3,90 +3,122 @@
         <img src="/img/logo.svg" alt="ParaBula">
         <span>ParaBula</span>
     </div>
+
     <nav>
-        <a href="/">Menu</a>
-        <a href="/">Menu</a>
-        <a href="/">Menu</a>
-        <a href="/">Equipe</a>
+        <a href="#">Funcionalidades</a>
+        <a href="#">Como utilizar?</a>
+        <a href="#">Equipe</a>
     </nav>
-    <a href="/" class="btn-top">INTERAGIR</a>
+
+    <a href="/" class="btn-top">Nova análise</a>
 </header>
 
-<main class="container">
+<main class="results-page">
+    <section class="results-hero">
+        <div>
+            <h1>Análise de Interações e Riscos</h1>
+            <p>Resultado da análise com base nas bulas e no perfil do paciente</p>
+        </div>
+        <a href="/" class="btn-outline">INTERAGIR</a>
+    </section>
 
-    <h1>Resultados da Análise</h1>
-
-    <div class="results-layout">
-
-        <!-- COLUNA ESQUERDA -->
-        <div class="results-left">
-
-            <div class="patient-context">
-                <h3>Contexto do Paciente</h3>
-                <div class="patient-info">
-                    <span>🗓 {{patient.age}} anos</span>
-                    <span class="dot">•</span>
-                    <span>⚧ {{#if (eq patient.biological_sex "female")}}Feminino{{else}}Masculino{{/if}}</span>
-                    <span>{{#if patient.is_pregnant}}Gestante{{else}}Não gestante{{/if}}</span>
-                </div>
-                {{#if patient.comorbidities}}
-                <div class="patient-comorbidades">
-                    <span>🫁 Comorbidades: {{patient.comorbidities}}</span>
-                </div>
-                {{/if}}
+    <section class="results-top-grid">
+        <article class="summary-card {{severityClass apiResponse.summary.severity}}">
+            <div class="summary-card-head">
+                <h2>Interações medicamentosas</h2>
+                <span class="severity-pill {{severityClass apiResponse.summary.severity}}">{{severityLabel apiResponse.summary.severity}}</span>
             </div>
-
-            <div class="summary-box">
-                <h3>Resumo</h3>
+            <p>
                 {{#if apiResponse.summary.interactions_found}}
-                <div class="summary-alert high">
-                    <span>⚠️</span>
-                    <strong>Interações Encontradas</strong>
-                </div>
+                Foram encontradas {{apiResponse.details.length}} interações relevantes entre os medicamentos analisados.
                 {{else}}
-                <div class="summary-alert" style="background: #eafaf1; border-color: #b8e6d5; color: #1e8449;">
-                    <span>✓</span>
-                    <strong>Sem Interações Relevantes</strong>
-                </div>
+                Nenhuma interação relevante foi encontrada entre os medicamentos analisados.
                 {{/if}}
-                <p>{{apiResponse.summary.description}}</p>
-                {{#if apiResponse.summary.interactions_found}}
-                <div class="severity-counts">
-                    <span class="badge-alta">Alta</span>
-                    <span class="badge-moderada">Moderada</span>
-                    <span class="badge-baixa">Baixa</span>
-                </div>
-                {{/if}}
-                <p class="summary-hint">Clique em uma interação para ver os detalhes.</p>
+            </p>
+        </article>
+
+        <article class="summary-card {{severityClass apiResponse.summary.severity}}">
+            <div class="summary-card-head">
+                <h2>Riscos para o paciente</h2>
+                <span class="severity-pill {{severityClass apiResponse.summary.severity}}">{{severityLabel apiResponse.summary.severity}}</span>
             </div>
+            <p>
+                {{#if patient.comorbidities.length}}
+                Foram identificados {{patient.comorbidities.length}} fatores de risco relacionados ao perfil do paciente.
+                {{else}}
+                Perfil sem comorbidades informadas. Avalie os riscos clínicos conforme contexto assistencial.
+                {{/if}}
+            </p>
+        </article>
+    </section>
 
-        </div>
-
-        <!-- COLUNA DIREITA -->
-        <div class="results-right">
-
-            <h3>Interações Encontradas</h3>
-
-            {{#if apiResponse.details}}
-                {{#each apiResponse.details}}
-                <div class="interaction-item {{this.severity}}">
-                    <span class="severity-tag {{this.severity}}">{{upper this.severity}}</span>
-                    <span class="interaction-name">{{this.drugs.[0]}} × {{this.drugs.[1]}}</span>
-                    <span class="arrow">›</span>
+    <section class="context-grid">
+        <article class="context-card">
+            <h3>Perfil do paciente</h3>
+            <div class="context-meta">
+                <div>
+                    <span class="context-label">Idade</span>
+                    <strong>{{patient.age}} anos</strong>
                 </div>
+                <div>
+                    <span class="context-label">Sexo biológico</span>
+                    <strong>{{ptSex patient.biological_sex}}</strong>
+                </div>
+                <div>
+                    <span class="context-label">Gestante</span>
+                    <strong>{{#if patient.is_pregnant}}Sim{{else}}Não{{/if}}</strong>
+                </div>
+                <div>
+                    <span class="context-label">Comorbidades</span>
+                    <strong>{{#if patient.comorbidities.length}}{{join patient.comorbidities ", "}}{{else}}Não informado{{/if}}</strong>
+                </div>
+            </div>
+        </article>
+
+        <article class="context-card">
+            <h3>Medicamentos analisados</h3>
+            <div class="med-tag-list">
+                {{#each drugs}}
+                <span class="med-tag">{{capitalizeFirst this}}</span>
                 {{/each}}
-            {{else}}
-                <p style="color: #999; padding: 20px; text-align: center;">Nenhuma interação relevante encontrada.</p>
-            {{/if}}
-
-            <div style="margin-top: 30px;">
-                <a href="/" style="display: inline-block; padding: 12px 24px; background: #004d40; color: white; text-decoration: none; border-radius: 8px; text-align: center; font-weight: bold;">
-                    ← Voltar
-                </a>
             </div>
+        </article>
+    </section>
 
-        </div>
+    <section class="details-section">
+        <header class="details-header">
+            <h3>Interações Medicamentosas</h3>
+            <span class="severity-pill {{severityClass apiResponse.summary.severity}}">{{severityLabel apiResponse.summary.severity}}</span>
+        </header>
+        <p class="details-subtitle">Interações entre os medicamentos que podem alterar o efeito, segurança ou toxicidade.</p>
 
-    </div>
+        {{#if apiResponse.details.length}}
+            {{#each apiResponse.details}}
+            <article class="interaction-row">
+                <div class="interaction-drugs">
+                    <span class="interaction-drug-chip {{severityClass this.severity}}">{{capitalizeFirst this.drugs.[0]}}</span>
+                    <span class="interaction-x {{severityClass this.severity}}">x</span>
+                    <span class="interaction-drug-chip {{severityClass this.severity}}">{{capitalizeFirst this.drugs.[1]}}</span>
+                </div>
+                <div class="interaction-desc">
+                    <div class="interaction-severity">
+                        <span class="severity-dot {{severityClass this.severity}}"></span>
+                        <strong>{{severityText this.severity}}</strong>
+                    </div>
+                    <p>{{this.description}}</p>
+                </div>
+                <button type="button" class="details-link">Ver detalhes</button>
+            </article>
+            {{/each}}
+        {{else}}
+            <div class="empty-state">
+                Nenhuma interação relevante encontrada para os medicamentos selecionados.
+            </div>
+        {{/if}}
+    </section>
 
+    <footer class="results-footer-note">
+        Este resultado é baseado nas bulas dos medicamentos e não substitui o julgamento clínico.
+        Em caso de dúvidas, consulte um profissional de saúde.
+    </footer>
 </main>
