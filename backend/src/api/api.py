@@ -14,8 +14,6 @@ except ModuleNotFoundError:
     
 app = FastAPI()
 
-supabase_client = get_client()
-
 def remover_acentos(texto: str) -> str:
     return ''.join(
         c for c in unicodedata.normalize('NFD', texto)
@@ -52,7 +50,7 @@ def chamar_modelo(client: OpenRouter, prompt: str) -> dict:
         )
 
 
-def montar_bulas_texto(drugs: List[str]) -> str:
+def montar_bulas_texto(drugs: List[str], supabase_client) -> str:
     """
     Para cada medicamento, busca no Supabase e monta o bloco de texto das bulas.
     Lança HTTPException se algum medicamento não for encontrado.
@@ -251,7 +249,18 @@ def check_interactions(data: DrugRequest):
         )
 
     # BUSCA DAS BULAS (única vez, reutilizado nos dois prompts)
-    bulas_texto = montar_bulas_texto(drugs)
+    try:
+        supabase_client = get_client()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": "SUPABASE_CONNECTION_ERROR",
+                "message": f"Falha ao conectar ao Supabase: {exc}"
+            }
+        )
+
+    bulas_texto = montar_bulas_texto(drugs, supabase_client)
 
     client = OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY"))
 
