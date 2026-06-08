@@ -1,4 +1,5 @@
 from openrouter import OpenRouter
+from src.processador_texto.processador_texto import get_interacoes
 import os
 
 def llm (content):
