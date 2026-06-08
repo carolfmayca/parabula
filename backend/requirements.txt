@@ -13,6 +13,6 @@ pydantic_core==2.46.4
 typing-inspection==0.4.2
 typing_extensions==4.15.0
 fastapi
+uvicorn[standard]
 sqlalchemy
 supabase==2.13.0
-postgrest==0.16.2

@@ -4,12 +4,12 @@
         <span>ParaBula</span>
     </div>
     <nav>
-        <a href="#">Menu</a>
-        <a href="#">Menu</a>
-        <a href="#">Menu</a>
-        <a href="#">Equipe</a>
+        <a href="/">Menu</a>
+        <a href="/">Menu</a>
+        <a href="/">Menu</a>
+        <a href="/">Equipe</a>
     </nav>
-    <button class="btn-top">INTERAGIR</button>
+    <a href="/" class="btn-top">INTERAGIR</a>
 </header>
 
 <main class="container">
@@ -24,28 +24,39 @@
             <div class="patient-context">
                 <h3>Contexto do Paciente</h3>
                 <div class="patient-info">
-                    <span>🗓 65 anos</span>
+                    <span>🗓 {{patient.age}} anos</span>
                     <span class="dot">•</span>
-                    <span>⚧ Feminino</span>
-                    <span>Não gestante</span>
+                    <span>⚧ {{#if (eq patient.biological_sex "female")}}Feminino{{else}}Masculino{{/if}}</span>
+                    <span>{{#if patient.is_pregnant}}Gestante{{else}}Não gestante{{/if}}</span>
                 </div>
+                {{#if patient.comorbidities}}
                 <div class="patient-comorbidades">
-                    <span>🫁 Comorbidades: Diabetes, Hipertensão arterial</span>
+                    <span>🫁 Comorbidades: {{patient.comorbidities}}</span>
                 </div>
+                {{/if}}
             </div>
 
             <div class="summary-box">
                 <h3>Resumo</h3>
+                {{#if apiResponse.summary.interactions_found}}
                 <div class="summary-alert high">
                     <span>⚠️</span>
-                    <strong>Interação de Alta Severidade Encontrada</strong>
+                    <strong>Interações Encontradas</strong>
                 </div>
-                <p>Foram identificadas interações clinicamente relevantes entre os medicamentos informados.</p>
+                {{else}}
+                <div class="summary-alert" style="background: #eafaf1; border-color: #b8e6d5; color: #1e8449;">
+                    <span>✓</span>
+                    <strong>Sem Interações Relevantes</strong>
+                </div>
+                {{/if}}
+                <p>{{apiResponse.summary.description}}</p>
+                {{#if apiResponse.summary.interactions_found}}
                 <div class="severity-counts">
-                    <span class="badge-alta">Alta <strong>1</strong></span>
-                    <span class="badge-moderada">Moderada <strong>1</strong></span>
-                    <span class="badge-baixa">Baixa <strong>1</strong></span>
+                    <span class="badge-alta">Alta</span>
+                    <span class="badge-moderada">Moderada</span>
+                    <span class="badge-baixa">Baixa</span>
                 </div>
+                {{/if}}
                 <p class="summary-hint">Clique em uma interação para ver os detalhes.</p>
             </div>
 
@@ -56,22 +67,22 @@
 
             <h3>Interações Encontradas</h3>
 
-            <div class="interaction-item high">
-                <span class="severity-tag alta">ALTA</span>
-                <span class="interaction-name">Claritromicina x Sinvastatina</span>
-                <span class="arrow">›</span>
-            </div>
+            {{#if apiResponse.details}}
+                {{#each apiResponse.details}}
+                <div class="interaction-item {{this.severity}}">
+                    <span class="severity-tag {{this.severity}}">{{upper this.severity}}</span>
+                    <span class="interaction-name">{{this.drugs.[0]}} × {{this.drugs.[1]}}</span>
+                    <span class="arrow">›</span>
+                </div>
+                {{/each}}
+            {{else}}
+                <p style="color: #999; padding: 20px; text-align: center;">Nenhuma interação relevante encontrada.</p>
+            {{/if}}
 
-            <div class="interaction-item medium">
-                <span class="severity-tag moderada">MODERADA</span>
-                <span class="interaction-name">Claritromicina x Sinvastatina</span>
-                <span class="arrow">›</span>
-            </div>
-
-            <div class="interaction-item low">
-                <span class="severity-tag baixa">BAIXA</span>
-                <span class="interaction-name">Claritromicina x Sinvastatina</span>
-                <span class="arrow">›</span>
+            <div style="margin-top: 30px;">
+                <a href="/" style="display: inline-block; padding: 12px 24px; background: #004d40; color: white; text-decoration: none; border-radius: 8px; text-align: center; font-weight: bold;">
+                    ← Voltar
+                </a>
             </div>
 
         </div>

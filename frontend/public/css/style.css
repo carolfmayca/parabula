@@ -1,10 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;600;700&display=swap');
 
 *{
     margin:0;
     padding:0;
     box-sizing:border-box;
-    font-family:Arial, Helvetica, sans-serif;
+    font-family:'Inter', sans-serif;
 }
 
 body{
@@ -35,7 +35,7 @@ body{
 .logo span{
     font-size:32px;
     color:#14453E;
-    margin-left:10px;
+    margin-left:5px;
     font-family: 'Poppins', sans-serif;
 }
 
@@ -65,9 +65,10 @@ nav a{
     width:90%;
     margin:40px auto;
     background:white;
-    border:1px solid #ddd;
+    border:1px solid #e0e0e0;
     border-radius:10px;
     padding:40px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
 .container h1{
@@ -83,15 +84,18 @@ nav a{
 
 .card{
     width:450px;
-    border:1px solid #ddd;
-    border-radius:10px;
-    padding:20px;
+    border:1px solid #e8e8e8;
+    border-radius:12px;
+    padding:30px;
+    background:#fafafa;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 
 .card h2{
-    color:#005e54;
-    font-size:24px;
+    color:#14453E;
+    font-size:22px;
     margin-bottom:8px;
+    font-weight: 600;
 }
 
 .card p{
@@ -103,28 +107,63 @@ nav a{
     display:flex;
     justify-content:space-between;
     align-items:center;
-    border:1px solid #ddd;
+    border:1px solid #e0e0e0;
     border-radius:8px;
-    padding:12px;
+    padding:12px 15px;
     margin-bottom:10px;
+    background:white;
+    transition: all 0.2s;
+}
+
+.medicine-item:hover{
+    border-color:#14453E;
+    box-shadow: 0 2px 4px rgba(20,69,62,0.1);
 }
 
 .medicine-item button{
     border:none;
     background:none;
-    font-size:20px;
+    font-size:24px;
     cursor:pointer;
+    color:#999;
+    padding:0;
+    width:30px;
+    text-align:center;
+}
+
+.medicine-item button:hover{
+    color:#e74c3c;
+}
+
+.add-medicine-container{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+}
+
+.medicine-input{
+    width:100%;
+    padding:10px;
+    border:1px solid #ddd;
+    border-radius:8px;
+    font-size:14px;
 }
 
 .add-btn{
     width:100%;
-    border:1px solid #ddd;
+    border:2px solid #14453E;
     background:white;
     padding:15px;
     border-radius:8px;
-    color:#005e54;
-    font-weight:bold;
+    color:#14453E;
+    font-weight:600;
     cursor:pointer;
+    transition: all 0.3s;
+}
+
+.add-btn:hover{
+    background:#14453E;
+    color:white;
 }
 
 .field{
@@ -134,7 +173,8 @@ nav a{
 .field label{
     display:block;
     margin-bottom:10px;
-    font-weight:bold;
+    font-weight:600;
+    color:#333;
 }
 
 .idade{
@@ -144,6 +184,10 @@ nav a{
 
 .idade input{
     width:60px;
+    padding:8px;
+    border:1px solid #ddd;
+    border-radius:6px;
+    font-size:14px;
 }
 
 .idade span{
@@ -159,7 +203,12 @@ nav a{
 textarea{
     width:100%;
     resize:none;
-    padding:10px;
+    padding:12px;
+    border:1px solid #ddd;
+    border-radius:6px;
+    font-family:'Inter', sans-serif;
+    font-size:14px;
+    line-height:1.5;
 }
 
 /* BOTÃO */
@@ -170,15 +219,32 @@ textarea{
     margin-top:50px;
 }
 
+.optional-tag{
+    font-size:13px;
+    color:#999;
+    font-weight:400;
+    letter-spacing: 0.5px;
+}
+
 .btn-search{
-    background:#004d40;
+    background:#14453E;
     color:white;
     border:none;
     border-radius:8px;
     padding:15px 30px;
     font-size:16px;
-    font-weight:bold;
+    font-weight:600;
     cursor:pointer;
+    transition: all 0.3s ease;
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.btn-search:hover{
+    background:#0d3836;
+    box-shadow: 0 4px 12px rgba(20,69,62,0.3);
+    transform: translateY(-2px);
 }
 
 .footer-text{

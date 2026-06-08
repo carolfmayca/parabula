@@ -6,8 +6,11 @@ from typing import List, Literal
 import os
 import json
 
-# Importando o cliente e as funções de busca do seu arquivo de banco de dados
-from backend.db.supabase_client import get_client, buscar_medicamento, buscar_bula
+# Importando o cliente e as funções de busca do banco de dados.
+try:
+    from backend.db.supabase_client import get_client, buscar_medicamento, buscar_bula
+except ModuleNotFoundError:
+    from db.supabase_client import get_client, buscar_medicamento, buscar_bula
 
 app = FastAPI()
 
