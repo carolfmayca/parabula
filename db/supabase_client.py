@@ -58,7 +58,7 @@ def inserir_medicamento(client: Client, principio_ativo: str) -> dict:
     )
 
     if existente.data:
-        return existente.data[0]
+        return {**existente.data[0], "_status": "já existia"}
 
     # Inserir novo
     resultado = (
@@ -109,7 +109,7 @@ def inserir_bula(
         dados["pdf_path"] = pdf_path
 
     resultado = client.table("bula_medicamento").insert(dados).execute()
-    return resultado.data[0]
+    return {**resultado.data[0], "_status": "adicionado"}
 
 
 def inserir_alias(
@@ -304,7 +304,7 @@ def carregar_bulas_json(client: Client, caminho: Path = BULAS_AGRUPADAS):
         pdf_path = f"bulas_pdf/bula_profissional_{nome}.pdf"
         bula = inserir_bula(client, med_id, conteudo, pdf_path)
 
-        status = "já existia" if bula.get("vigente") else "inserida"
+        status = bula.get("_status", "já existia" if bula.get("id") else "adicionado")
         if alias_comercial:
             print(
                 f"  ✓ {nome} -> {principio_ativo} (id={med_id}) - "

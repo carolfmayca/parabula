@@ -133,6 +133,14 @@ def extrair_principios_ativos(detalhes: dict | None) -> list[str]:
     return principios
 
 
+def produto_corresponde_a_principio(nome: str, nome_produto: str | None, principios: list[str]) -> bool:
+    nomes_principio = {normalizar_nome(principio) for principio in principios}
+    nome_normalizado = normalizar_nome(nome)
+    produto_normalizado = normalizar_nome(nome_produto or "")
+
+    return nome_normalizado in nomes_principio or produto_normalizado in nomes_principio
+
+
 def baixar_primeira_bula_profissional(
     scraper,
     resultado: dict | None,
@@ -190,26 +198,46 @@ def processar_medicamento_com_principios(scraper, nome: str, pausa: float = 1.0)
     resultados = []
 
     busca_produto = pesquisar_por_nome_produto(scraper, nome)
-    bula_comercial = baixar_primeira_bula_profissional(
+
+    primeiro = None
+    principios = []
+    if isinstance(busca_produto, dict) and busca_produto.get("content"):
+        primeiro = busca_produto["content"][0]
+        num_processo = primeiro.get("numProcesso")
+        if num_processo:
+            detalhes = get_detalhes_medicamento(scraper, num_processo)
+            principios = extrair_principios_ativos(detalhes)
+        else:
+            print(f"[AVISO] {nome} -> sem número de processo para buscar princípio ativo")
+
+    if primeiro and produto_corresponde_a_principio(nome, primeiro.get("nomeProduto"), principios):
+        rotulo_produto = f"principio_{principios[0] if principios else nome}"
+        origem_produto = "princípio ativo"
+    else:
+        rotulo_produto = f"comercial_{nome}"
+        origem_produto = "nome comercial/produto"
+
+    bula_produto = baixar_primeira_bula_profissional(
         scraper,
         busca_produto,
-        rotulo_arquivo=f"comercial_{nome}",
-        origem="nome comercial/produto",
+        rotulo_arquivo=rotulo_produto,
+        origem=origem_produto,
     )
-    if bula_comercial:
-        resultados.append(bula_comercial)
+    if bula_produto:
+        resultados.append(bula_produto)
 
-    if not isinstance(busca_produto, dict) or not busca_produto.get("content"):
+    if not primeiro:
+        busca_principio = pesquisar_por_principio_ativo(scraper, nome)
+        bula_principio = baixar_primeira_bula_profissional(
+            scraper,
+            busca_principio,
+            rotulo_arquivo=f"principio_{nome}",
+            origem="princípio ativo",
+        )
+        if bula_principio:
+            resultados.append(bula_principio)
         return resultados
 
-    primeiro = busca_produto["content"][0]
-    num_processo = primeiro.get("numProcesso")
-    if not num_processo:
-        print(f"[AVISO] {nome} -> sem número de processo para buscar princípio ativo")
-        return resultados
-
-    detalhes = get_detalhes_medicamento(scraper, num_processo)
-    principios = extrair_principios_ativos(detalhes)
     if not principios:
         print(f"[AVISO] {nome} -> princípio ativo não encontrado nos detalhes")
         return resultados
