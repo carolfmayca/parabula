@@ -7,11 +7,12 @@ from typing import List, Literal
 import os
 import json
 
-from backend.db.supabase_client import get_client, buscar_medicamento, buscar_bula
-
+try:
+    from backend.db.supabase_client import get_client, buscar_medicamento, buscar_bula
+except ModuleNotFoundError:
+    from db.supabase_client import get_client, buscar_medicamento, buscar_bula
+    
 app = FastAPI()
-
-supabase_client = get_client()
 
 def remover_acentos(texto: str) -> str:
     return ''.join(
@@ -49,7 +50,7 @@ def chamar_modelo(client: OpenRouter, prompt: str) -> dict:
         )
 
 
-def montar_bulas_texto(drugs: List[str]) -> str:
+def montar_bulas_texto(drugs: List[str], supabase_client) -> str:
     """
     Para cada medicamento, busca no Supabase e monta o bloco de texto das bulas.
     Lança HTTPException se algum medicamento não for encontrado.
@@ -143,7 +144,8 @@ def prompt_interacoes(drugs: List[str], bulas_texto: str) -> str:
     - O summary.description deve citar explicitamente os medicamentos envolvidos.
     - Baseie-se EXCLUSIVAMENTE nas informações das bulas fornecidas. Se uma interação não estiver descrita nas bulas, não a reporte.
     - O details.description deve conter uma descrição detalhada da interação, se disponíveis nas bulas.
-    - O details.description deve citar explicitamente os medicamentos envolvidos na interação.
+    - O details.description deve citar explicitamente os medicamentos envolvidos na interação. 
+    - Se a interação não estiver descrita nas bulas, não a reporte.
 
     Informações das bulas:
     {bulas_texto}
@@ -248,7 +250,18 @@ def check_interactions(data: DrugRequest):
         )
 
     # BUSCA DAS BULAS (única vez, reutilizado nos dois prompts)
-    bulas_texto = montar_bulas_texto(drugs)
+    try:
+        supabase_client = get_client()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": "SUPABASE_CONNECTION_ERROR",
+                "message": f"Falha ao conectar ao Supabase: {exc}"
+            }
+        )
+
+    bulas_texto = montar_bulas_texto(drugs, supabase_client)
 
     client = OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY"))
 
