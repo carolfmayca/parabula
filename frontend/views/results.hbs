@@ -23,24 +23,24 @@
     </section>
 
     <section class="results-top-grid">
-        <article class="summary-card {{severityClass apiResponse.summary.severity}}">
+        <article class="summary-card {{severityClass apiResponse.interactions.summary.severity}}">
             <div class="summary-card-head">
                 <h2>Interações medicamentosas</h2>
-                <span class="severity-pill {{severityClass apiResponse.summary.severity}}">{{severityLabel apiResponse.summary.severity}}</span>
+                <span class="severity-pill {{severityClass apiResponse.interactions.summary.severity}}">{{severityLabel apiResponse.interactions.summary.severity}}</span>
             </div>
             <p>
-                {{#if apiResponse.summary.interactions_found}}
-                Foram encontradas {{apiResponse.details.length}} interações relevantes entre os medicamentos analisados.
+                {{#if apiResponse.interactions.summary.interactions_found}}
+                Foram encontradas {{apiResponse.interactions.details.length}} interações relevantes entre os medicamentos analisados.
                 {{else}}
                 Nenhuma interação relevante foi encontrada entre os medicamentos analisados.
                 {{/if}}
             </p>
         </article>
 
-        <article class="summary-card {{severityClass apiResponse.summary.severity}}">
+        <article class="summary-card {{severityClass apiResponse.interactions.summary.severity}}">
             <div class="summary-card-head">
                 <h2>Riscos para o paciente</h2>
-                <span class="severity-pill {{severityClass apiResponse.summary.severity}}">{{severityLabel apiResponse.summary.severity}}</span>
+                <span class="severity-pill {{severityClass apiResponse.interactions.summary.severity}}">{{severityLabel apiResponse.interactions.summary.severity}}</span>
             </div>
             <p>
                 {{#if patient.comorbidities.length}}
@@ -88,12 +88,12 @@
     <section class="details-section">
         <header class="details-header">
             <h3>Interações Medicamentosas</h3>
-            <span class="severity-pill {{severityClass apiResponse.summary.severity}}">{{severityLabel apiResponse.summary.severity}}</span>
+            <span class="severity-pill {{severityClass apiResponse.interactions.summary.severity}}">{{severityLabel apiResponse.interactions.summary.severity}}</span>
         </header>
         <p class="details-subtitle">Interações entre os medicamentos que podem alterar o efeito, segurança ou toxicidade.</p>
 
-        {{#if apiResponse.details.length}}
-            {{#each apiResponse.details}}
+        {{#if apiResponse.interactions.details.length}}
+            {{#each apiResponse.interactions.details}}
             <article class="interaction-row">
                 <div class="interaction-drugs">
                     <span class="interaction-drug-chip {{severityClass this.severity}}">{{capitalizeFirst this.drugs.[0]}}</span>
@@ -105,7 +105,7 @@
                         <span class="severity-dot {{severityClass this.severity}}"></span>
                         <strong>{{severityText this.severity}}</strong>
                     </div>
-                    <p>{{this.description}}</p>
+                    <p>{{../apiResponse.interactions.summary.description}}</p>
                 </div>
                 <button type="button" class="details-link">Ver detalhes</button>
             </article>
@@ -118,7 +118,6 @@
     </section>
 
     <footer class="results-footer-note">
-        Este resultado é baseado nas bulas dos medicamentos e não substitui o julgamento clínico.
-        Em caso de dúvidas, consulte um profissional de saúde.
+        Este resultado é baseado nas bulas dos medicamentos e não substitui o julgamento clínico. Avalie as informações conforme o contexto do paciente e a prática assistencial.
     </footer>
 </main>
