@@ -662,6 +662,70 @@ textarea{
     color: #004d40;
     font-weight: 600;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.details-link.active {
+    color: #014034;
+}
+
+.details-arrow {
+    font-size: 12px;
+    transition: transform 0.2s;
+}
+
+.interaction-detail-panel {
+    display: none;
+    background: #f0f7f5;
+    border: 1px solid #b2d8d1;
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-top: -8px;
+    margin-bottom: 12px;
+    color: #004d40;
+    line-height: 1.6;
+    font-size: 14px;
+}
+
+.interaction-detail-panel.open {
+    display: block;
+}
+
+.risk-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr auto;
+    gap: 16px;
+    border: 1px solid #e7ebf4;
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 12px;
+    align-items: center;
+    background: #ffffff;
+}
+
+.risk-context {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: #004d40;
+}
+
+.risk-context span {
+    font-size: 14px;
+}
+
+.risk-desc p {
+    color: #004d40;
+    line-height: 1.5;
+}
+
+.risk-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
 
 .empty-state {
@@ -694,6 +758,11 @@ textarea{
     }
 
     .interaction-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .risk-row {
         grid-template-columns: 1fr;
         gap: 10px;
     }
