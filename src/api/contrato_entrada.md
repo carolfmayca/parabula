@@ -152,7 +152,7 @@ pip install fastapi uvicorn
 No terminal, execute:
 
 ```bash
-uvicorn mock_api:app --reload
+uvicorn backend.src.api.api:app --reload
 ```
 
 ---
