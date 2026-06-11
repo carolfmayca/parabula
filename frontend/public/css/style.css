@@ -200,6 +200,19 @@ nav a{
     gap:30px;
 }
 
+.radio-group label.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.radio-group label.disabled input {
+    cursor: not-allowed;
+}
+
+.radio-group input:disabled {
+    accent-color: #999;
+}
+
 textarea{
     width:100%;
     resize:none;

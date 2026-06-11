@@ -46,6 +46,39 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     });
 
+    const sexInputs = document.querySelectorAll('input[name="biological_sex"]');
+    const pregnancyInputs = document.querySelectorAll('input[name="is_pregnant"]');
+    const pregnancyLabels = document.querySelectorAll('input[name="is_pregnant"]');
+
+    function updatePregnancyState() {
+        const selectedSex = document.querySelector('input[name="biological_sex"]:checked');
+        const shouldEnable = selectedSex && selectedSex.value !== "male";
+
+        pregnancyInputs.forEach((input) => {
+            input.disabled = !shouldEnable;
+            if (!shouldEnable) {
+                input.checked = false;
+            }
+        });
+
+        pregnancyInputs.forEach((input) => {
+            const label = input.closest('label');
+            if (label) {
+                if (!shouldEnable) {
+                    label.classList.add('disabled');
+                } else {
+                    label.classList.remove('disabled');
+                }
+            }
+        });
+    }
+
+    sexInputs.forEach((input) => {
+        input.addEventListener('change', updatePregnancyState);
+    });
+
+    updatePregnancyState();
+
     // Validar e enviar formulário
     formulario.addEventListener("submit", function(e) {
         e.preventDefault();
