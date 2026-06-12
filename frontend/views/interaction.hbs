@@ -1,0 +1,139 @@
+<header class="navbar">
+
+    <div class="logo">
+        <img src="/img/logo.svg" alt="ParaBula">
+        <span>ParaBula</span>
+    </div>
+
+    <nav>
+        <a href="#">Funcionalidades</a>
+        <a href="#">Como utilizar?</a>
+        <a href="#">Equipe</a>
+    </nav>
+
+    <button class="btn-top">
+        INTERAGIR
+    </button>
+
+</header>
+
+<main class="container">
+
+    <h1>Interação Inicial</h1>
+    <form action="/results" method="POST">
+
+        <div class="content">
+
+
+            <section class="card">
+
+                <h2>1. Medicamentos da nova prescrição</h2>
+
+                <p>
+                    Informe os medicamentos que você pretende prescrever.
+                </p>
+
+                <div id="medicamentos-list">
+                    {{#each medicamentos}}
+                    <div class="medicine-item">
+                        <span>{{this}}</span>
+                        <button type="button" class="remove-medicine" data-index="{{@index}}">×</button>
+                    </div>
+                    {{/each}}
+                </div>
+
+                <div class="add-medicine-container">
+                    <input type="text" id="novo-medicamento" placeholder="Digite o nome do medicamento" class="medicine-input">
+                    <button type="button" class="add-btn" id="add-medicine-btn">
+                        + Adicionar medicamento
+                    </button>
+                </div>
+
+            </section>
+
+            <section class="card">
+
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                    <h2 style="margin-bottom: 0;">2. Dados do Paciente</h2>
+                    <span class="optional-tag">(Opcional)</span>
+                </div>
+
+                <p>
+                    Informe os dados clínicos relevantes do paciente.
+                </p>
+
+                <div class="field">
+                    <label>Idade</label>
+
+                    <div class="idade">
+                        <input type="number" id="idade" name="idade" min="0" max="150">
+                        <span>anos</span>
+                    </div>
+                </div>
+
+                <div class="field">
+
+                    <label>Sexo Biológico</label>
+
+                    <div class="radio-group">
+                        <label>
+                            <input type="radio" name="biological_sex" value="female">
+                            Feminino
+                        </label>
+
+                        <label>
+                            <input type="radio" name="biological_sex" value="male">
+                            Masculino
+                        </label>
+                    </div>
+
+                </div>
+
+                <div class="field">
+
+                    <label>Gestante?</label>
+
+                    <div class="radio-group">
+
+                        <label>
+                            <input type="radio" name="is_pregnant" value="true">
+                            Sim
+                        </label>
+
+                        <label>
+                            <input type="radio" name="is_pregnant" value="false">
+                            Não
+                        </label>
+
+                    </div>
+
+                </div>
+
+                <div class="field">
+
+                    <label>Comorbidades</label>
+                    <p style="color: #999; font-size: 14px; margin-bottom: 10px;">Informe as comorbidades presentes:</p>
+
+                    <textarea id="comorbidades" name="comorbidades" rows="5" placeholder="Ex: Diabetes, Hipertensão..."></textarea>
+
+                </div>
+
+            </section>
+
+        </div>
+
+        <div class="action">
+
+            <button type="submit" class="btn-search">
+                <img src="/img/lupa.svg" alt="" class="icon-btn"> ANALISAR INTERAÇÕES
+            </button>
+
+        </div>
+    </form>
+    <p class="footer-text">
+        As análises são baseadas nas bulas e não substituem o julgamento clínico.
+    </p>
+
+</main>
+
+<script src="/js/interaction.js"></script>

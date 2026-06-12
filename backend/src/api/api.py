@@ -1,3 +1,4 @@
+import unicodedata
 from fastapi import FastAPI, HTTPException
 from openrouter import OpenRouter
 import os
