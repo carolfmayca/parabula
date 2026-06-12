@@ -40,8 +40,43 @@ POST /drug-interactions/check
 - A lista deve conter no mínimo 2 medicamentos
 - Cada medicamento deve ser uma string
 - Medicamentos duplicados não são permitidos
-- Os medicamentos devem ser enviados usando o princípio ativo
+- Os medicamentos podem ser enviados usando princípio ativo ou nome comercial
 - Os nomes devem estar em lowercase
+- Se um medicamento não estiver no banco, a API tentará buscar a bula na ANVISA e cadastrá-lo automaticamente
+- Se a API não encontrar a bula na ANVISA, esse medicamento será desconsiderado na análise e retornado em `ignored_drugs`
+
+---
+
+# Saída esperada
+
+```json
+{
+  "success": true,
+  "drugs": [
+    "ibuprofeno",
+    "losartana"
+  ],
+  "ignored_drugs": [
+    {
+      "drug": "medicamento inexistente",
+      "reason": "nao_encontrado_anvisa"
+    }
+  ],
+  "interactions": {
+    "summary": {
+      "interactions_found": false,
+      "severity": "low",
+      "description": "Nenhuma interação relevante encontrada."
+    },
+    "details": []
+  },
+  "clinical_risks": {
+    "risks_found": false,
+    "severity": "low",
+    "items": []
+  }
+}
+```
 
 ---
 

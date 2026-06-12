@@ -5,14 +5,16 @@ import os
 
 try:
     from backend.db.supabase_client import get_client
-except ModuleNotFoundError as exc:
-    print(exc)
+    from backend.src.classes.data import DrugRequest
+    from backend.src.modelo_llm.open_router import chamar_modelo
+    from backend.src.processador_texto.processador_texto import montar_bulas_texto
+    from backend.src.modelo_llm.prompts import prompt_interacoes, prompt_riscos_clinicos
+except ModuleNotFoundError:
     from db.supabase_client import get_client
-
-from backend.src.classes.data import  DrugRequest
-from backend.src.modelo_llm.open_router import chamar_modelo
-from backend.src.processador_texto.processador_texto import montar_bulas_texto
-from backend.src.modelo_llm.prompts import prompt_interacoes, prompt_riscos_clinicos
+    from src.classes.data import DrugRequest
+    from src.modelo_llm.open_router import chamar_modelo
+    from src.processador_texto.processador_texto import montar_bulas_texto
+    from src.modelo_llm.prompts import prompt_interacoes, prompt_riscos_clinicos
 
 app = FastAPI()
 
@@ -66,25 +68,51 @@ def check_interactions(data: DrugRequest):
             }
         )
 
-    bulas_texto = montar_bulas_texto(drugs, supabase_client)
+    resultado_bulas = montar_bulas_texto(
+        drugs,
+        supabase_client,
+        retornar_metadados=True,
+    )
+    bulas_texto = resultado_bulas["bulas_texto"]
+    ignored_drugs = resultado_bulas["ignored_drugs"]
+    drugs_considerados = []
+    vistos = set()
+    for drug in resultado_bulas["drugs_considerados"]:
+        if drug not in vistos:
+            drugs_considerados.append(drug)
+            vistos.add(drug)
+
+    if not drugs_considerados:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "NO_DRUGS_AVAILABLE",
+                "message": (
+                    "Nenhum dos medicamentos informados foi encontrado no banco "
+                    "ou na ANVISA."
+                ),
+                "ignored_drugs": ignored_drugs,
+            },
+        )
 
     client = OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY"))
 
     # PROMPT 1: interações entre medicamentos
     resultado_interacoes = chamar_modelo(
         client,
-        prompt_interacoes(drugs, bulas_texto)
+        prompt_interacoes(drugs_considerados, bulas_texto)
     )
 
     # PROMPT 2: riscos clínicos do perfil do paciente
     resultado_riscos = chamar_modelo(
         client,
-        prompt_riscos_clinicos(drugs, data.patient, bulas_texto)
+        prompt_riscos_clinicos(drugs_considerados, data.patient, bulas_texto)
     )
 
     return {
         "success": True,
-        "drugs": drugs,
+        "drugs": drugs_considerados,
+        "ignored_drugs": ignored_drugs,
         "interactions": {
             "summary": resultado_interacoes["summary"],
             "details": resultado_interacoes["details"]

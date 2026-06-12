@@ -30,33 +30,77 @@ def remover_acentos(texto: str) -> str:
         if unicodedata.category(c) != 'Mn'
     )
 
-from fastapi import HTTPException
 from typing import List
-from backend.db.supabase_client import buscar_medicamento, buscar_bula
-def montar_bulas_texto(drugs: List[str], supabase_client) -> str:
+try:
+    from backend.db.supabase_client import buscar_medicamento, buscar_bula
+    from backend.src.processamento_bulas.importacao_automatica import (
+        importar_medicamento_desconhecido,
+    )
+except ModuleNotFoundError as exc:
+    if exc.name not in {"backend", "backend.db", "backend.src"}:
+        raise
+    from db.supabase_client import buscar_medicamento, buscar_bula
+    from src.processamento_bulas.importacao_automatica import (
+        importar_medicamento_desconhecido,
+    )
+
+
+def buscar_ou_importar_medicamento(supabase_client, drug: str) -> tuple[list[dict], dict | None]:
+    drug_busca = remover_acentos(drug)
+    medicamentos_encontrados = buscar_medicamento(supabase_client, drug_busca)
+    if medicamentos_encontrados:
+        return medicamentos_encontrados, None
+
+    resultado_importacao = importar_medicamento_desconhecido(supabase_client, drug)
+    if not resultado_importacao.get("importado"):
+        return [], resultado_importacao
+
+    principio_ativo = resultado_importacao["principio_ativo"]
+    medicamentos_encontrados = (
+        buscar_medicamento(supabase_client, principio_ativo)
+        or buscar_medicamento(supabase_client, drug_busca)
+    )
+    return medicamentos_encontrados, resultado_importacao
+
+
+def montar_bulas_texto(
+    drugs: List[str],
+    supabase_client,
+    retornar_metadados: bool = False,
+):
     """
     Para cada medicamento, busca no Supabase e monta o bloco de texto das bulas.
-    Lança HTTPException se algum medicamento não for encontrado.
+    Medicamentos ausentes são buscados automaticamente na ANVISA. Se ainda
+    assim não forem encontrados, são ignorados no texto retornado.
     """
     bulas_texto = ""
+    drugs_considerados = []
+    drogas_ignoradas = []
+    importacoes = []
 
     for drug in drugs:
-        drug_busca = remover_acentos(drug)
-
-        medicamentos_encontrados = buscar_medicamento(supabase_client, drug_busca)
+        medicamentos_encontrados, resultado_importacao = buscar_ou_importar_medicamento(
+            supabase_client,
+            drug,
+        )
+        if resultado_importacao:
+            importacoes.append({"drug": drug, **resultado_importacao})
 
         if not medicamentos_encontrados:
-            raise HTTPException(
-                status_code=404,
-                detail={
-                    "code": "DRUG_NOT_FOUND",
-                    "message": f"Medicamento '{drug}' não encontrado no sistema."
-                }
-            )
+            drogas_ignoradas.append({
+                "drug": drug,
+                "reason": (
+                    resultado_importacao.get("motivo")
+                    if resultado_importacao
+                    else "nao_encontrado_banco"
+                ),
+            })
+            continue
 
         med_registro = medicamentos_encontrados[0]
         med_id = med_registro["id"]
         nome_oficial = med_registro["principio_ativo"]
+        drugs_considerados.append(nome_oficial)
 
         bula_registro = buscar_bula(supabase_client, med_id)
 
@@ -65,11 +109,12 @@ def montar_bulas_texto(drugs: List[str], supabase_client) -> str:
         else:
             secoes_bula = bula_registro["conteudo_json"]
             conteudo_bula = ""
-            for secao_nome, secao_conteudo in secoes_bula.items(): 
+            for secao_nome, secao_conteudo in secoes_bula.items():
+                secao_normalizada = remover_acentos(secao_nome).lower()
                 if ( 
-                    ( "interac" in secao_nome.lower() or 
-                     "contraind" in secao_nome.lower() or 
-                     "advert" in secao_nome.lower() ) 
+                    ( "interac" in secao_normalizada or
+                     "contraind" in secao_normalizada or
+                     "advert" in secao_normalizada )
                      and secao_conteudo ): 
                     conteudo_bula += f"{secao_nome}:\n{secao_conteudo}\n"
             if not conteudo_bula:
@@ -83,5 +128,13 @@ def montar_bulas_texto(drugs: List[str], supabase_client) -> str:
 
         ------------------------
         """
+
+    if retornar_metadados:
+        return {
+            "bulas_texto": bulas_texto,
+            "drugs_considerados": drugs_considerados,
+            "ignored_drugs": drogas_ignoradas,
+            "importacoes": importacoes,
+        }
 
     return bulas_texto
