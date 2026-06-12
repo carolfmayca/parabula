@@ -32,7 +32,12 @@ def remover_acentos(texto: str) -> str:
 
 from fastapi import HTTPException
 from typing import List
-from backend.db.supabase_client import buscar_medicamento, buscar_bula
+try:
+    from backend.db.supabase_client import buscar_medicamento, buscar_bula
+except ModuleNotFoundError:
+    from db.supabase_client import buscar_medicamento, buscar_bula
+
+
 def montar_bulas_texto(drugs: List[str], supabase_client) -> str:
     """
     Para cada medicamento, busca no Supabase e monta o bloco de texto das bulas.

@@ -92,7 +92,10 @@ def prompt_interacoes(drugs: List[str], bulas_texto: str) -> str:
     {bulas_texto}
 """
 
-from backend.src.classes.data import Patient 
+try:
+    from backend.src.classes.data import Patient
+except ModuleNotFoundError:
+    from src.classes.data import Patient
 def prompt_riscos_clinicos(drugs: List[str], patient: Patient, bulas_texto: str) -> str:
     """
     Prompt focado APENAS nos riscos clínicos do perfil do paciente com cada medicamento.

@@ -6,14 +6,16 @@ import os
 
 try:
     from backend.db.supabase_client import get_client
-except ModuleNotFoundError as exc:
-    print(exc)
+    from backend.src.classes.data import DrugRequest
+    from backend.src.modelo_llm.open_router import chamar_modelo
+    from backend.src.processador_texto.processador_texto import montar_bulas_texto
+    from backend.src.modelo_llm.prompts import prompt_interacoes, prompt_riscos_clinicos
+except ModuleNotFoundError:
     from db.supabase_client import get_client
-
-from backend.src.classes.data import  DrugRequest
-from backend.src.modelo_llm.open_router import chamar_modelo
-from backend.src.processador_texto.processador_texto import montar_bulas_texto
-from backend.src.modelo_llm.prompts import prompt_interacoes, prompt_riscos_clinicos
+    from src.classes.data import DrugRequest
+    from src.modelo_llm.open_router import chamar_modelo
+    from src.processador_texto.processador_texto import montar_bulas_texto
+    from src.modelo_llm.prompts import prompt_interacoes, prompt_riscos_clinicos
 
 app = FastAPI()
 
