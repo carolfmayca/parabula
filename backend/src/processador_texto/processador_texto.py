@@ -33,41 +33,11 @@ def remover_acentos(texto: str) -> str:
 from typing import List
 try:
     from backend.db.supabase_client import buscar_medicamento, buscar_bula
-    from backend.src.processamento_bulas.importacao_automatica import (
-        importar_medicamento_desconhecido,
-    )
-except ModuleNotFoundError as exc:
-    if exc.name not in {"backend", "backend.db", "backend.src"}:
-        raise
+except ModuleNotFoundError:
     from db.supabase_client import buscar_medicamento, buscar_bula
-    from src.processamento_bulas.importacao_automatica import (
-        importar_medicamento_desconhecido,
-    )
 
 
-def buscar_ou_importar_medicamento(supabase_client, drug: str) -> tuple[list[dict], dict | None]:
-    drug_busca = remover_acentos(drug)
-    medicamentos_encontrados = buscar_medicamento(supabase_client, drug_busca)
-    if medicamentos_encontrados:
-        return medicamentos_encontrados, None
-
-    resultado_importacao = importar_medicamento_desconhecido(supabase_client, drug)
-    if not resultado_importacao.get("importado"):
-        return [], resultado_importacao
-
-    principio_ativo = resultado_importacao["principio_ativo"]
-    medicamentos_encontrados = (
-        buscar_medicamento(supabase_client, principio_ativo)
-        or buscar_medicamento(supabase_client, drug_busca)
-    )
-    return medicamentos_encontrados, resultado_importacao
-
-
-def montar_bulas_texto(
-    drugs: List[str],
-    supabase_client,
-    retornar_metadados: bool = False,
-):
+def montar_bulas_texto(drugs: List[str], supabase_client) -> str:
     """
     Para cada medicamento, busca no Supabase e monta o bloco de texto das bulas.
     Medicamentos ausentes são buscados automaticamente na ANVISA. Se ainda
@@ -129,6 +99,7 @@ def montar_bulas_texto(
         ------------------------
         """
 
+<<<<<<< HEAD
     if retornar_metadados:
         return {
             "bulas_texto": bulas_texto,
@@ -137,4 +108,6 @@ def montar_bulas_texto(
             "importacoes": importacoes,
         }
 
+=======
+>>>>>>> main
     return bulas_texto
