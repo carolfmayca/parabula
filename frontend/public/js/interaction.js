@@ -49,6 +49,8 @@ document.addEventListener("DOMContentLoaded", function() {
     const sexInputs = document.querySelectorAll('input[name="biological_sex"]');
     const pregnancyInputs = document.querySelectorAll('input[name="is_pregnant"]');
     const pregnancyLabels = document.querySelectorAll('input[name="is_pregnant"]');
+    const idadeInput = document.getElementById("idade");
+    const comorbidadesInput = document.getElementById("comorbidades");
 
     function updatePregnancyState() {
         const selectedSex = document.querySelector('input[name="biological_sex"]:checked');
@@ -87,6 +89,22 @@ document.addEventListener("DOMContentLoaded", function() {
             alert("Informe pelo menos 2 medicamentos");
             return;
         }
+
+        const payloadPreview = {
+            drugs: medicamentosList,
+            patient: {
+                age: idadeInput && idadeInput.value !== "" ? Number(idadeInput.value) : null,
+                biological_sex: document.querySelector('input[name="biological_sex"]:checked')?.value || null,
+                is_pregnant: (() => {
+                    const selected = document.querySelector('input[name="is_pregnant"]:checked')?.value;
+                    return selected === "true" ? true : selected === "false" ? false : null;
+                })(),
+                comorbidities: comorbidadesInput && comorbidadesInput.value
+                    ? comorbidadesInput.value.split(",").map(c => c.trim()).filter(c => c)
+                    : null
+            }
+        };
+        console.debug("DEBUG - JSON de análise (frontend):", JSON.stringify(payloadPreview, null, 2));
 
         // Limpa campos hidden antigos para evitar duplicação em múltiplos submits.
         formulario.querySelectorAll('input[type="hidden"][name="medicamentos"]').forEach((el) => el.remove());

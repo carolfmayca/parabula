@@ -24,15 +24,20 @@ exports.results = async (req, res) => {
         }
 
         // Preparar payload para a API
+        const parsedAge = idade !== undefined && idade !== "" ? parseInt(idade, 10) : null;
         const payload = {
             drugs: meds,
             patient: {
-                age: parseInt(idade) || 0,
-                biological_sex: biological_sex || "other",
-                is_pregnant: is_pregnant === "true",
+                age: Number.isNaN(parsedAge) ? null : parsedAge,
+                biological_sex: biological_sex || null,
+                is_pregnant: is_pregnant === "true"
+                    ? true
+                    : is_pregnant === "false"
+                        ? false
+                        : null,
                 comorbidities: comorbidades
                     ? comorbidades.split(",").map(c => c.trim()).filter(c => c)
-                    : []
+                    : null
             }
         };
 
