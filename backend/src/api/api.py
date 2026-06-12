@@ -25,14 +25,14 @@ def check_interactions(data: DrugRequest):
     drugs = [drug.lower() for drug in data.drugs]
 
     # VALIDAÇÃO 0: Consistência dos dados do paciente
-    if data.patient.is_pregnant and data.patient.biological_sex != "female":
+    if data.patient.is_pregnant and data.patient.biological_sex == "male":
         raise HTTPException(
             status_code=400,
             detail={
                 "code": "INVALID_PATIENT_DATA",
                 "message": (
-                    "Apenas pacientes do sexo biológico feminino "
-                    "podem ser marcados como grávidos."
+                    "Pacientes do sexo biológico masculino "
+                    "não podem ser marcados como grávidos."
                 )
             }
         )
