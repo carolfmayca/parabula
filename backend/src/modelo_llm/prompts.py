@@ -96,14 +96,11 @@ try:
     from backend.src.classes.data import Patient
 except ModuleNotFoundError:
     from src.classes.data import Patient
-def prompt_riscos_clinicos(drugs: List[str], patient: Patient, bulas_texto: str) -> str:
+def prompt_riscos_clinicos(drugs: List[str], bulas_texto: str,perfil_paciente_str: str) -> str:
     """
     Prompt focado APENAS nos riscos clínicos do perfil do paciente com cada medicamento.
     Avalia comorbidades, faixa etária e gravidez — sem analisar interações entre medicamentos.
     """
-    comorbidades_str = (
-        ", ".join(patient.comorbidities) if patient.comorbidities else "Nenhuma"
-    )
 
     return f"""
     Você é um sistema especializado em farmacologia clínica.
@@ -111,10 +108,7 @@ def prompt_riscos_clinicos(drugs: List[str], patient: Patient, bulas_texto: str)
     ou alertas específicos para o perfil clínico do paciente abaixo.
 
     Perfil do paciente:
-    - Idade: {patient.age} anos
-    - Sexo biológico: {patient.biological_sex}
-    - Grávida: {patient.is_pregnant}
-    - Comorbidades: {comorbidades_str}
+    {perfil_paciente_str}
 
     Medicamentos:
     {", ".join(drugs)}
@@ -149,6 +143,11 @@ def prompt_riscos_clinicos(drugs: List[str], patient: Patient, bulas_texto: str)
     - Baseie-se EXCLUSIVAMENTE nas informações das bulas fornecidas. Se um risco não estiver descrito nas bulas, não o reporte.
     - NÃO reporte interações entre medicamentos. Isso é responsabilidade de outro sistema. Reporte APENAS riscos decorrentes do perfil do paciente (comorbidades, idade, gravidez). 
     - Se o único risco identificado for uma interação entre medicamentos, retorne risks_found como false e items como lista vazia.
+    - Nem todas as informações do paciente podem estar disponíveis.
+    - Analise apenas os dados clínicos efetivamente fornecidos e não faça suposições sobre informações ausentes.
+    - Se idade não foi informada, não avalie riscos relacionados à faixa etária.
+    - Se sexo biológico não foi informado, não considere riscos específicos de sexo.
+    - Se comorbidades não foram informadas, não considere comorbidades inexistentes.
 
     Informações das bulas:
     {bulas_texto}
