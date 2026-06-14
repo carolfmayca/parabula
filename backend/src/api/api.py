@@ -5,13 +5,13 @@ import os
 
 try:
     from backend.db.supabase_client import get_client
-    from backend.src.classes.data import DrugRequest
+    from backend.src.classes.data import DrugRequest, montar_contexto_medicamentos
     from backend.src.modelo_llm.open_router import chamar_modelo
     from backend.src.processador_texto.processador_texto import montar_bulas_texto
     from backend.src.modelo_llm.prompts import prompt_interacoes, prompt_riscos_clinicos
 except ModuleNotFoundError:
     from db.supabase_client import get_client
-    from src.classes.data import DrugRequest
+    from src.classes.data import DrugRequest, montar_contexto_medicamentos
     from src.modelo_llm.open_router import chamar_modelo
     from src.processador_texto.processador_texto import montar_bulas_texto
     from src.modelo_llm.prompts import prompt_interacoes, prompt_riscos_clinicos
@@ -21,7 +21,9 @@ app = FastAPI()
 @app.post("/drug-interactions/check")
 def check_interactions(data: DrugRequest):
 
-    drugs = [drug.lower() for drug in data.drugs]
+    drugs = data.drugs
+    drug_names = [drug.name for drug in drugs]
+    contexto_medicamentos_str = montar_contexto_medicamentos(drugs)
     num_drugs = len(drugs)
 
     patient = data.patient
@@ -49,7 +51,7 @@ def check_interactions(data: DrugRequest):
     has_patient = bool(perfil_paciente)
 
     # VALIDAÇÃO 1: Medicamentos duplicados
-    if len(drugs) != len(set(drugs)):
+    if len(drug_names) != len(set(drug_names)):
         raise HTTPException(
             status_code=400,
             detail={
@@ -95,7 +97,7 @@ def check_interactions(data: DrugRequest):
             }
         )
 
-    bulas_texto = montar_bulas_texto(drugs, supabase_client)
+    bulas_texto = montar_bulas_texto(drug_names, supabase_client)
 
     client = OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY"))
     
@@ -103,12 +105,17 @@ def check_interactions(data: DrugRequest):
     if num_drugs == 1 and has_patient:
         resultado_riscos = chamar_modelo(
             client,
-            prompt_riscos_clinicos(drugs,data.patient,bulas_texto, perfil_paciente_str)
+            prompt_riscos_clinicos(
+                drug_names,
+                bulas_texto,
+                perfil_paciente_str,
+                contexto_medicamentos_str,
+            )
         )
 
         return {
             "success": True,
-            "drugs": drugs,
+            "drugs": [drug.model_dump() for drug in drugs],
             "clinical_risks": {
                 "risks_found": resultado_riscos["risks_found"],
                 "severity": resultado_riscos["severity"],
@@ -120,12 +127,12 @@ def check_interactions(data: DrugRequest):
     if num_drugs >= 2 and not has_patient:
         resultado_interacoes = chamar_modelo(
             client,
-            prompt_interacoes(drugs, bulas_texto)
+            prompt_interacoes(drug_names, bulas_texto, contexto_medicamentos_str)
         )
 
         return {
             "success": True,
-            "drugs": drugs,
+            "drugs": [drug.model_dump() for drug in drugs],
             "interactions": {
                 "summary": resultado_interacoes["summary"],
                 "details": resultado_interacoes["details"]
@@ -136,16 +143,21 @@ def check_interactions(data: DrugRequest):
     if num_drugs >= 2 and has_patient:
         resultado_interacoes = chamar_modelo(
             client,
-            prompt_interacoes(drugs, bulas_texto)
+            prompt_interacoes(drug_names, bulas_texto, contexto_medicamentos_str)
         )
         resultado_riscos = chamar_modelo(
             client,
-            prompt_riscos_clinicos(drugs,data.patient,bulas_texto, perfil_paciente_str)
+            prompt_riscos_clinicos(
+                drug_names,
+                bulas_texto,
+                perfil_paciente_str,
+                contexto_medicamentos_str,
+            )
         )
 
         return {
             "success": True,
-            "drugs": drugs,
+            "drugs": [drug.model_dump() for drug in drugs],
             "interactions": {
                 "summary": resultado_interacoes["summary"],
                 "details": resultado_interacoes["details"]

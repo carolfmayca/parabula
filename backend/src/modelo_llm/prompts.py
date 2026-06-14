@@ -44,12 +44,17 @@ def prompt_advertenciasEprecaucoes (infoPat: list[str], infoReme: list[tuple[str
 
     return prompt
 
-from typing import List
-def prompt_interacoes(drugs: List[str], bulas_texto: str) -> str:
+from typing import List, Optional
+def prompt_interacoes(
+    drugs: List[str],
+    bulas_texto: str,
+    contexto_medicamentos_str: Optional[str] = None,
+) -> str:
     """
     Prompt focado APENAS em interações entre os medicamentos.
     Não recebe dados do paciente — evita que o modelo misture os contextos.
     """
+    _ = contexto_medicamentos_str
     return f"""
     Você é um sistema especializado em farmacologia clínica.
     Sua tarefa é identificar interações medicamentosas entre os medicamentos listados,
@@ -96,11 +101,17 @@ try:
     from backend.src.classes.data import Patient
 except ModuleNotFoundError:
     from src.classes.data import Patient
-def prompt_riscos_clinicos(drugs: List[str], bulas_texto: str,perfil_paciente_str: str) -> str:
+def prompt_riscos_clinicos(
+    drugs: List[str],
+    bulas_texto: str,
+    perfil_paciente_str: str,
+    contexto_medicamentos_str: Optional[str] = None,
+) -> str:
     """
     Prompt focado APENAS nos riscos clínicos do perfil do paciente com cada medicamento.
     Avalia comorbidades, faixa etária e gravidez — sem analisar interações entre medicamentos.
     """
+    _ = contexto_medicamentos_str
 
     return f"""
     Você é um sistema especializado em farmacologia clínica.
