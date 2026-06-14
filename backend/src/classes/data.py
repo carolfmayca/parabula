@@ -55,12 +55,12 @@ class DrugRequest(BaseModel):
         data["drugs"] = normalized
         return data
 
-
-def montar_contexto_medicamentos(drugs: List[Drug]) -> str:
-    linhas = []
-    for drug in drugs:
-        linha = f"- {drug.name}"
-        if drug.via:
-            linha += f" (via: {drug.via})"
-        linhas.append(linha)
-    return "\n".join(linhas)
+    @classmethod
+    def montar_contexto_medicamentos(cls) -> str:
+        linhas = []
+        for drug in cls.drugs:
+            linha = f"- {drug.name}"
+            if drug.via:
+                linha += f" (via: {drug.via})"
+            linhas.append(linha)
+        return "\n".join(linhas)
