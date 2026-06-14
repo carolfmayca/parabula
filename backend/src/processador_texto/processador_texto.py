@@ -38,7 +38,7 @@ except ModuleNotFoundError:
     from db.supabase_client import buscar_medicamento, buscar_bula
 
 
-def montar_bulas_texto(drugs: List[str], supabase_client) -> str:
+def montar_bulas_texto(drugs: List[str], supabase_client, campos: List[str] = None) -> str:
     """
     Para cada medicamento, busca no Supabase e monta o bloco de texto das bulas.
     Lança HTTPException se algum medicamento não for encontrado.
@@ -70,13 +70,20 @@ def montar_bulas_texto(drugs: List[str], supabase_client) -> str:
         else:
             secoes_bula = bula_registro["conteudo_json"]
             conteudo_bula = ""
-            for secao_nome, secao_conteudo in secoes_bula.items(): 
-                if ( 
-                    ( "interac" in secao_nome.lower() or 
-                     "contraind" in secao_nome.lower() or 
-                     "advert" in secao_nome.lower() ) 
-                     and secao_conteudo ): 
-                    conteudo_bula += f"{secao_nome}:\n{secao_conteudo}\n"
+            if not campos:
+                campos = ["INTERAÇÕES MEDICAMENTOSAS", "CONTRAINDICAÇÕES", "ADVERTÊNCIAS E PRECAUÇÕES"]
+            campos = [campo.upper() for campo in campos]  # Normaliza os nomes dos campos para maiúsculas
+            for campo in campos:
+            
+                secao_conteudo = secoes_bula.get(campo, "Conteúdo não disponível")
+                conteudo_bula += f"{campo}:\n{secao_conteudo}\n"    
+                # for secao_nome, secao_conteudo in secoes_bula.items(): 
+                #     if ( 
+                #         ( "intera" in secao_nome.lower() or 
+                #         "contraind" in secao_nome.lower() or 
+                #         "advert" in secao_nome.lower() ) 
+                #         and secao_conteudo ): 
+                #         conteudo_bula += f"{secao_nome}:\n{secao_conteudo}\n"
             if not conteudo_bula:
                 conteudo_bula = json.dumps(secoes_bula, ensure_ascii=False, indent=2)
 
