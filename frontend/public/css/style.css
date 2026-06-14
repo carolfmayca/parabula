@@ -106,13 +106,29 @@ nav a{
 .medicine-item{
     display:flex;
     justify-content:space-between;
-    align-items:center;
+    align-items:flex-start;
     border:1px solid #e0e0e0;
     border-radius:8px;
     padding:12px 15px;
     margin-bottom:10px;
     background:white;
     transition: all 0.2s;
+}
+
+.medicine-item-content{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+}
+
+.medicine-item-name{
+    font-weight:600;
+    color:#333;
+}
+
+.medicine-item-via{
+    font-size:14px;
+    color:#666;
 }
 
 .medicine-item:hover{
@@ -141,12 +157,42 @@ nav a{
     gap:10px;
 }
 
-.medicine-input{
+.medicine-input,
+.medicine-via-select{
     width:100%;
-    padding:10px;
+    padding:10px 36px 10px 10px;
     border:1px solid #ddd;
     border-radius:8px;
     font-size:14px;
+    background:white;
+    color:#333;
+}
+
+.medicine-input{
+    padding-right:10px;
+}
+
+.medicine-input::placeholder{
+    color:#999;
+}
+
+.medicine-via-select{
+    cursor:pointer;
+    appearance:none;
+    -webkit-appearance:none;
+    -moz-appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23999999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;
+    background-position:right 12px center;
+    background-size:12px 8px;
+}
+
+.medicine-via-select.is-placeholder{
+    color:#999;
+}
+
+.medicine-via-select option{
+    color:#333;
 }
 
 .add-btn{
@@ -164,6 +210,35 @@ nav a{
 .add-btn:hover{
     background:#14453E;
     color:white;
+}
+
+.payload-debug{
+    margin-top:20px;
+    border:1px dashed #ccc;
+    border-radius:8px;
+    padding:12px 15px;
+    background:#fafafa;
+}
+
+.payload-debug summary{
+    cursor:pointer;
+    font-size:14px;
+    color:#666;
+    user-select:none;
+}
+
+.payload-debug pre{
+    margin:12px 0 0;
+    padding:12px;
+    background:#fff;
+    border:1px solid #e0e0e0;
+    border-radius:6px;
+    font-size:12px;
+    line-height:1.5;
+    color:#333;
+    overflow-x:auto;
+    white-space:pre-wrap;
+    word-break:break-word;
 }
 
 .field{

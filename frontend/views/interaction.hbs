@@ -35,8 +35,15 @@
 
                 <div id="medicamentos-list">
                     {{#each medicamentos}}
-                    <div class="medicine-item">
-                        <span>{{this}}</span>
+                    <div class="medicine-item"
+                        data-name="{{#if this.name}}{{this.name}}{{else}}{{this}}{{/if}}"
+                        data-via="{{this.via}}">
+                        <div class="medicine-item-content">
+                            <span class="medicine-item-name">{{#if this.name}}{{capitalizeFirst this.name}}{{else}}{{capitalizeFirst this}}{{/if}}</span>
+                            {{#if this.via}}
+                            <span class="medicine-item-via">Via: {{ptVia this.via}}</span>
+                            {{/if}}
+                        </div>
                         <button type="button" class="remove-medicine" data-index="{{@index}}">×</button>
                     </div>
                     {{/each}}
@@ -44,6 +51,19 @@
 
                 <div class="add-medicine-container">
                     <input type="text" id="novo-medicamento" placeholder="Digite o nome do medicamento" class="medicine-input">
+                    <select id="medicamento-via" class="medicine-via-select is-placeholder">
+                        <option value="">Via (Opcional)</option>
+                        <option value="oral">Oral</option>
+                        <option value="intravenosa">Intravenosa (IV)</option>
+                        <option value="intramuscular">Intramuscular (IM)</option>
+                        <option value="subcutanea">Subcutânea (SC)</option>
+                        <option value="topica">Tópica</option>
+                        <option value="inalatoria">Inalatória</option>
+                        <option value="oftalmica">Oftálmica</option>
+                        <option value="nasal">Nasal</option>
+                        <option value="retal">Retal</option>
+                        <option value="outra">Outra</option>
+                    </select>
                     <button type="button" class="add-btn" id="add-medicine-btn">
                         + Adicionar medicamento
                     </button>

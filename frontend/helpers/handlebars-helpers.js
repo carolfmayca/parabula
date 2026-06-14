@@ -109,8 +109,60 @@ module.exports = {
     },
 
     ptSex: function(biologicalSex) {
+        if (biologicalSex === null || biologicalSex === undefined || biologicalSex === '') {
+            return 'Não informado';
+        }
         if (biologicalSex === 'female') return 'Feminino';
         if (biologicalSex === 'male') return 'Masculino';
-        return 'Outro';
+        if (biologicalSex === 'other') return 'Outro';
+        return 'Não informado';
+    },
+
+    ptAge: function(age) {
+        if (age === null || age === undefined || age === '') {
+            return 'Não informado';
+        }
+        return `${age} anos`;
+    },
+
+    ptPregnant: function(isPregnant) {
+        if (isPregnant === null || isPregnant === undefined || isPregnant === '') {
+            return 'Não informado';
+        }
+        if (isPregnant === true || isPregnant === 'true') return 'Sim';
+        if (isPregnant === false || isPregnant === 'false') return 'Não';
+        return 'Não informado';
+    },
+
+    ptComorbidities: function(comorbidities) {
+        if (!comorbidities || !Array.isArray(comorbidities) || !comorbidities.length) {
+            return 'Não informado';
+        }
+
+        return comorbidities
+            .map(item => {
+                const s = String(item).trim();
+                return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+            })
+            .filter(Boolean)
+            .join(', ');
+    },
+
+    ptVia: function(via) {
+        const labels = {
+            oral: 'Oral',
+            intravenosa: 'Intravenosa (IV)',
+            intramuscular: 'Intramuscular (IM)',
+            subcutanea: 'Subcutânea (SC)',
+            topica: 'Tópica',
+            inalatoria: 'Inalatória',
+            oftalmica: 'Oftálmica',
+            nasal: 'Nasal',
+            retal: 'Retal',
+            outra: 'Outra'
+        };
+
+        if (!via) return '';
+        return labels[via] || via;
     }
 };
