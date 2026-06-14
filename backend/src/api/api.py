@@ -5,13 +5,13 @@ import os
 
 try:
     from backend.db.supabase_client import get_client
-    from backend.src.classes.data import DrugRequest, montar_contexto_medicamentos
+    from backend.src.classes.data import DrugRequest
     from backend.src.modelo_llm.open_router import chamar_modelo
     from backend.src.processador_texto.processador_texto import montar_bulas_texto
     from backend.src.modelo_llm.prompts import prompt_interacoes, prompt_riscos_clinicos
 except ModuleNotFoundError:
     from db.supabase_client import get_client
-    from src.classes.data import DrugRequest, montar_contexto_medicamentos
+    from src.classes.data import DrugRequest
     from src.modelo_llm.open_router import chamar_modelo
     from src.processador_texto.processador_texto import montar_bulas_texto
     from src.modelo_llm.prompts import prompt_interacoes, prompt_riscos_clinicos
@@ -23,7 +23,7 @@ def check_interactions(data: DrugRequest):
 
     drugs = data.drugs
     drug_names = [drug.name for drug in drugs]
-    contexto_medicamentos_str = montar_contexto_medicamentos(drugs)
+    contexto_medicamentos_str = data.montar_contexto_medicamentos(drugs)
     num_drugs = len(drugs)
 
     patient = data.patient
@@ -97,7 +97,8 @@ def check_interactions(data: DrugRequest):
             }
         )
 
-    bulas_texto = montar_bulas_texto(drug_names, supabase_client)
+    texto_riscos = montar_bulas_texto(drug_names, supabase_client, ["CONTRAINDICAÇÕES", "ADVERTÊNCIAS E PRECAUÇÕES", "POSOLOGIA E MODO DE USAR"])
+    texto_interacoes = montar_bulas_texto(drug_names, supabase_client, ["INTERAÇÕES MEDICAMENTOSAS"])
 
     client = OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY"))
     
@@ -107,7 +108,7 @@ def check_interactions(data: DrugRequest):
             client,
             prompt_riscos_clinicos(
                 drug_names,
-                bulas_texto,
+                texto_riscos,
                 perfil_paciente_str,
                 contexto_medicamentos_str,
             )
@@ -127,7 +128,7 @@ def check_interactions(data: DrugRequest):
     if num_drugs >= 2 and not has_patient:
         resultado_interacoes = chamar_modelo(
             client,
-            prompt_interacoes(drug_names, bulas_texto, contexto_medicamentos_str)
+            prompt_interacoes(drug_names, texto_interacoes, contexto_medicamentos_str)
         )
 
         return {
@@ -143,13 +144,13 @@ def check_interactions(data: DrugRequest):
     if num_drugs >= 2 and has_patient:
         resultado_interacoes = chamar_modelo(
             client,
-            prompt_interacoes(drug_names, bulas_texto, contexto_medicamentos_str)
+            prompt_interacoes(drug_names, texto_interacoes, contexto_medicamentos_str)
         )
         resultado_riscos = chamar_modelo(
             client,
             prompt_riscos_clinicos(
                 drug_names,
-                bulas_texto,
+                texto_riscos,
                 perfil_paciente_str,
                 contexto_medicamentos_str,
             )
