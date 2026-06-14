@@ -8,7 +8,6 @@ const VIA_LABELS = {
     oftalmica: "Oftálmica",
     nasal: "Nasal",
     retal: "Retal",
-    outra: "Outra"
 };
 
 let medicamentosList = [];
