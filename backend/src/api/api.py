@@ -103,7 +103,7 @@ def check_interactions(data: DrugRequest):
     if num_drugs == 1 and has_patient:
         resultado_riscos = chamar_modelo(
             client,
-            prompt_riscos_clinicos(drugs,data.patient,bulas_texto, perfil_paciente_str)
+            prompt_riscos_clinicos(drugs,bulas_texto, perfil_paciente_str)
         )
 
         return {
@@ -140,7 +140,7 @@ def check_interactions(data: DrugRequest):
         )
         resultado_riscos = chamar_modelo(
             client,
-            prompt_riscos_clinicos(drugs,data.patient,bulas_texto, perfil_paciente_str)
+            prompt_riscos_clinicos(drugs,bulas_texto, perfil_paciente_str)
         )
 
         return {
