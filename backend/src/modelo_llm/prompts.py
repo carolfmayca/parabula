@@ -1,51 +1,8 @@
-def prompt_interacao (A, B, interA, interB) ->  str:
-    """
-    @params A: nome da medicação A
-    @params interA: seção sobre interação medicamentosa da bula A
-    @params B: nome da medicação B
-    @params interB: seção sobre interação medicamentosa da bula B
-    """
-    if not A or not B: 
-        return AttributeError()
-    
-    prompt = f"""
-                Use as informações e responda:
-
-                Os medicamentos {A} e {B} possuem interações entre si?
-                
-                Responda apenas "Sim" ou "Não". 
-
-                Informações dos medicamentos:
-                {A}: {interA}
-
-
-                {B}: {interB}
-
-                """
-    return prompt
-    
-def prompt_advertenciasEprecaucoes (infoPat: list[str], infoReme: list[tuple[str,str]] ) -> str:
-    """
-    @params infoPat: lista de condições e comorbidades do paciente
-    @params infoReme: lista de tuplas com (nome, advertencias e precauções)
-    """
-    if not infoPat or not infoReme:
-        print("excecao")
-        return AttributeError()
-    
-    prompt = f"""
-                O paciente tem as seguintes condições e comorbidadades: 
-                
-                sa{infoPat[0]+ ", " + ", ".join(infoPat[1:])}
-
-                Os remédios prescritos tem as seguintes advertências e precauções:
-                """
-    prompt += "\n" + "\n".join([f"\t\t{nome} : {info}" for nome,info in infoReme])
-
-    return prompt
-
-from typing import List
-def prompt_interacoes(drugs: List[str], bulas_texto: str) -> str:
+from typing import List, Optional
+def prompt_interacoes(
+    bulas_texto: str,
+    contexto_medicamentos_str: Optional[str] = None,
+) -> str:
     """
     Prompt focado APENAS em interações entre os medicamentos.
     Não recebe dados do paciente — evita que o modelo misture os contextos.
@@ -56,7 +13,7 @@ def prompt_interacoes(drugs: List[str], bulas_texto: str) -> str:
     com base exclusivamente nas informações das bulas fornecidas.
 
     Medicamentos:
-    {", ".join(drugs)}
+    {contexto_medicamentos_str}
 
     RESPONDA APENAS EM JSON VÁLIDO, sem texto fora do JSON.
 
@@ -92,11 +49,12 @@ def prompt_interacoes(drugs: List[str], bulas_texto: str) -> str:
     {bulas_texto}
 """
 
-try:
-    from backend.src.classes.data import Patient
-except ModuleNotFoundError:
-    from src.classes.data import Patient
-def prompt_riscos_clinicos(drugs: List[str], bulas_texto: str,perfil_paciente_str: str) -> str:
+
+def prompt_riscos_clinicos(
+    bulas_texto: str,
+    perfil_paciente_str: str,
+    contexto_medicamentos_str: Optional[str] = None,
+) -> str:
     """
     Prompt focado APENAS nos riscos clínicos do perfil do paciente com cada medicamento.
     Avalia comorbidades, faixa etária e gravidez — sem analisar interações entre medicamentos.
@@ -111,12 +69,13 @@ def prompt_riscos_clinicos(drugs: List[str], bulas_texto: str,perfil_paciente_st
     {perfil_paciente_str}
 
     Medicamentos:
-    {", ".join(drugs)}
+    {contexto_medicamentos_str}
 
     Avalie três categorias de risco clínico:
     1. Contraindicações ou cautelas por comorbidade (ex: AINE em paciente hipertenso)
     2. Riscos por faixa etária (ex: sedativos em idosos, doses em crianças)
-    3. Contraindicações ou cautelas na gravidez (apenas se is_pregnant for true)
+    3. Advertencias específicas da via de administração
+    4. Contraindicações ou cautelas na gravidez (apenas se is_pregnant for true)
 
     RESPONDA APENAS EM JSON VÁLIDO, sem texto fora do JSON.
 

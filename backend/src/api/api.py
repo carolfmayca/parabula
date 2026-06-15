@@ -1,6 +1,8 @@
+import logging
+import os
+
 from fastapi import FastAPI, HTTPException
 from openrouter import OpenRouter
-import os
 
 try:
     from backend.db.supabase_client import get_client
@@ -16,6 +18,7 @@ except ModuleNotFoundError:
     from src.modelo_llm.prompts import prompt_interacoes, prompt_riscos_clinicos
 
 app = FastAPI()
+logger = logging.getLogger("uvicorn.error")
 
 
 def normalizar_severidade(valor: str | None) -> str:
@@ -69,11 +72,51 @@ def ajustar_riscos_saida(resultado_riscos: dict) -> dict:
     return resultado_riscos
 
 
+def deduplicar_nomes(nomes: list[str]) -> list[str]:
+    nomes_unicos = []
+    vistos = set()
+    for nome in nomes:
+        if nome not in vistos:
+            nomes_unicos.append(nome)
+            vistos.add(nome)
+    return nomes_unicos
+
+
+def montar_contexto_medicamentos_considerados(
+    drogas_requisitadas,
+    drugs_considerados: list[str],
+) -> str:
+    nomes_considerados = {drug.lower() for drug in drugs_considerados}
+    linhas = []
+    nomes_incluidos = set()
+
+    for drug in drogas_requisitadas:
+        if drug.name not in nomes_considerados and drug.name.lower() not in nomes_considerados:
+            continue
+
+        linha = f"- {drug.name}"
+        if drug.via:
+            linha += f" (via: {drug.via})"
+        linhas.append(linha)
+        nomes_incluidos.add(drug.name.lower())
+
+    for drug in drugs_considerados:
+        if drug.lower() not in nomes_incluidos:
+            linhas.append(f"- {drug}")
+
+    return "\n".join(linhas)
+
+
 @app.post("/drug-interactions/check")
 def check_interactions(data: DrugRequest):
-    drugs = [drug.lower() for drug in data.drugs]
+    logger.info("Rota /drug-interactions/check chamada")
+
+    drugs = data.drugs
+    drug_names = [drug.name for drug in drugs]
     num_drugs = len(drugs)
     patient = data.patient
+
+    logger.info("Medicamentos recebidos: %s", drug_names)
 
     # VALIDAÇÃO 0: Consistência dos dados do paciente
     if patient.is_pregnant and patient.biological_sex == "male":
@@ -108,7 +151,7 @@ def check_interactions(data: DrugRequest):
     has_patient = bool(perfil_paciente)
 
     # VALIDAÇÃO 1: Medicamentos duplicados
-    if len(drugs) != len(set(drugs)):
+    if len(drug_names) != len(set(drug_names)):
         raise HTTPException(
             status_code=400,
             detail={
@@ -140,7 +183,6 @@ def check_interactions(data: DrugRequest):
             },
         )
 
-    # BUSCA DAS BULAS (única vez, reutilizada nos prompts)
     try:
         supabase_client = get_client()
     except Exception as exc:
@@ -152,19 +194,15 @@ def check_interactions(data: DrugRequest):
             },
         )
 
-    resultado_bulas = montar_bulas_texto(
-        drugs,
+    resultado_riscos_bulas = montar_bulas_texto(
+        drug_names,
         supabase_client,
+        ["CONTRAINDICAÇÕES", "ADVERTÊNCIAS E PRECAUÇÕES", "POSOLOGIA E MODO DE USAR"],
         retornar_metadados=True,
     )
-    bulas_texto = resultado_bulas["bulas_texto"]
-    ignored_drugs = resultado_bulas["ignored_drugs"]
-    drugs_considerados = []
-    vistos = set()
-    for drug in resultado_bulas["drugs_considerados"]:
-        if drug not in vistos:
-            drugs_considerados.append(drug)
-            vistos.add(drug)
+    texto_riscos = resultado_riscos_bulas["bulas_texto"]
+    ignored_drugs = resultado_riscos_bulas["ignored_drugs"]
+    drugs_considerados = deduplicar_nomes(resultado_riscos_bulas["drugs_considerados"])
 
     if not drugs_considerados:
         raise HTTPException(
@@ -178,6 +216,19 @@ def check_interactions(data: DrugRequest):
                 "ignored_drugs": ignored_drugs,
             },
         )
+
+    texto_interacoes = montar_bulas_texto(
+        drugs_considerados,
+        supabase_client,
+        ["INTERAÇÕES MEDICAMENTOSAS", "POSOLOGIA E MODO DE USAR"],
+    )
+
+    contexto_medicamentos_str = montar_contexto_medicamentos_considerados(
+        drugs,
+        drugs_considerados,
+    )
+
+    logger.info("Informações de bula montadas")
 
     client = OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY"))
     num_drugs_considerados = len(drugs_considerados)
@@ -200,16 +251,17 @@ def check_interactions(data: DrugRequest):
         resultado_riscos = chamar_modelo(
             client,
             prompt_riscos_clinicos(
-                drugs_considerados,
-                bulas_texto,
+                texto_riscos,
                 perfil_paciente_str,
+                contexto_medicamentos_str,
             ),
         )
         resultado_riscos = ajustar_riscos_saida(resultado_riscos)
 
         return {
             "success": True,
-            "drugs": drugs_considerados,
+            "drugs": [drug.model_dump() for drug in drugs],
+            "drugs_considered": drugs_considerados,
             "ignored_drugs": ignored_drugs,
             "clinical_risks": {
                 "risks_found": resultado_riscos["risks_found"],
@@ -222,13 +274,14 @@ def check_interactions(data: DrugRequest):
     if num_drugs_considerados >= 2 and not has_patient:
         resultado_interacoes = chamar_modelo(
             client,
-            prompt_interacoes(drugs_considerados, bulas_texto),
+            prompt_interacoes(texto_interacoes, contexto_medicamentos_str),
         )
         resultado_interacoes = ajustar_interacoes_saida(resultado_interacoes)
 
         return {
             "success": True,
-            "drugs": drugs_considerados,
+            "drugs": [drug.model_dump() for drug in drugs],
+            "drugs_considered": drugs_considerados,
             "ignored_drugs": ignored_drugs,
             "interactions": {
                 "summary": resultado_interacoes["summary"],
@@ -240,14 +293,14 @@ def check_interactions(data: DrugRequest):
     if num_drugs_considerados >= 2 and has_patient:
         resultado_interacoes = chamar_modelo(
             client,
-            prompt_interacoes(drugs_considerados, bulas_texto),
+            prompt_interacoes(texto_interacoes, contexto_medicamentos_str),
         )
         resultado_riscos = chamar_modelo(
             client,
             prompt_riscos_clinicos(
-                drugs_considerados,
-                bulas_texto,
+                texto_riscos,
                 perfil_paciente_str,
+                contexto_medicamentos_str,
             ),
         )
         resultado_interacoes = ajustar_interacoes_saida(resultado_interacoes)
@@ -255,7 +308,8 @@ def check_interactions(data: DrugRequest):
 
         return {
             "success": True,
-            "drugs": drugs_considerados,
+            "drugs": [drug.model_dump() for drug in drugs],
+            "drugs_considered": drugs_considerados,
             "ignored_drugs": ignored_drugs,
             "interactions": {
                 "summary": resultado_interacoes["summary"],

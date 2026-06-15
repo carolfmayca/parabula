@@ -1,21 +1,45 @@
-exports.index = (req, res) => {
+function parseMedicamentos(rawMedicamentos) {
+    const items = Array.isArray(rawMedicamentos)
+        ? rawMedicamentos.filter(Boolean)
+        : (rawMedicamentos ? [rawMedicamentos] : []);
 
+    return items.map((item) => {
+        if (typeof item === "string") {
+            try {
+                const parsed = JSON.parse(item);
+                if (parsed && parsed.name) {
+                    return {
+                        name: parsed.name,
+                        via: parsed.via || null
+                    };
+                }
+            } catch (_) {
+                return { name: item, via: null };
+            }
+        }
+
+        if (item && item.name) {
+            return {
+                name: item.name,
+                via: item.via || null
+            };
+        }
+
+        return { name: String(item), via: null };
+    });
+}
+
+exports.index = (req, res) => {
     res.render("interaction", {
         medicamentos: []
     });
-
 };
 
 exports.results = async (req, res) => {
     try {
-        // Capturar dados do formulário
         const { medicamentos, idade, biological_sex, is_pregnant, comorbidades } = req.body;
+        const meds = parseMedicamentos(medicamentos);
 
-        const meds = Array.isArray(medicamentos)
-            ? medicamentos.filter(Boolean)
-            : (medicamentos ? [medicamentos] : []);
-
-        // Validar dados
         if (meds.length < 2) {
             return res.status(400).render("interaction", {
                 medicamentos: meds,
@@ -23,10 +47,12 @@ exports.results = async (req, res) => {
             });
         }
 
-        // Preparar payload para a API
         const parsedAge = idade !== undefined && idade !== "" ? parseInt(idade, 10) : null;
         const payload = {
-            drugs: meds,
+            drugs: meds.map((med) => ({
+                name: med.name,
+                via: med.via
+            })),
             patient: {
                 age: Number.isNaN(parsedAge) ? null : parsedAge,
                 biological_sex: biological_sex || null,
@@ -42,8 +68,9 @@ exports.results = async (req, res) => {
         };
 
         const backendBaseUrl = (process.env.BACKEND_URL || "http://localhost:8000").replace(/\/$/, "");
-
-        // Chamar API backend
+        
+        console.log(`${backendBaseUrl}/drug-interactions/check`);
+        
         const response = await fetch(`${backendBaseUrl}/drug-interactions/check`, {
             method: "POST",
             headers: {
@@ -51,14 +78,16 @@ exports.results = async (req, res) => {
             },
             body: JSON.stringify(payload)
         });
+        
+        console.log("Chegou aqui")
 
         if (!response.ok) {
-            throw new Error(`API error: ${response.status}`);
+            throw new Error(`API error: ${response.status} ${response.statusText}`);
         }
+
 
         const apiResponse = await response.json();
 
-        // Passar dados para a view de resultados
         res.render("results", {
             drugs: payload.drugs,
             patient: payload.patient,
@@ -68,7 +97,7 @@ exports.results = async (req, res) => {
     } catch (error) {
         console.error("Erro ao analisar interações:", error);
         res.status(500).render("interaction", {
-            medicamentos: req.body.medicamentos || [],
+            medicamentos: parseMedicamentos(req.body.medicamentos),
             erro: "Erro ao analisar interações. Tente novamente."
         });
     }

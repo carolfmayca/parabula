@@ -64,7 +64,7 @@
             <div class="context-meta">
                 <div>
                     <span class="context-label">Idade</span>
-                    <strong>{{patient.age}} anos</strong>
+                    <strong>{{ptAge patient.age}}</strong>
                 </div>
                 <div>
                     <span class="context-label">Sexo biológico</span>
@@ -72,11 +72,11 @@
                 </div>
                 <div>
                     <span class="context-label">Gestante</span>
-                    <strong>{{#if patient.is_pregnant}}Sim{{else}}Não{{/if}}</strong>
+                    <strong>{{ptPregnant patient.is_pregnant}}</strong>
                 </div>
                 <div>
                     <span class="context-label">Comorbidades</span>
-                    <strong>{{#if patient.comorbidities.length}}{{joinCapitalized patient.comorbidities ", "}}{{else}}Não informado{{/if}}</strong>
+                    <strong>{{ptComorbidities patient.comorbidities}}</strong>
                 </div>
             </div>
         </article>
@@ -85,7 +85,10 @@
             <h3>Medicamentos analisados</h3>
             <div class="med-tag-list">
                 {{#each drugs}}
-                <span class="med-tag">{{capitalizeFirst this}}</span>
+                <span class="med-tag">
+                    {{capitalizeFirst this.name}}
+                    {{#if this.via}} · {{ptVia this.via}}{{/if}}
+                </span>
                 {{/each}}
             </div>
         </article>

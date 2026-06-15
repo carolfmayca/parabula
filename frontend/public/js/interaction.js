@@ -1,43 +1,85 @@
-// Gerenciar lista de medicamentos
+const VIA_LABELS = {
+    oral: "Oral",
+    intravenosa: "Intravenosa (IV)",
+    intramuscular: "Intramuscular (IM)",
+    subcutanea: "Subcutânea (SC)",
+    topica: "Tópica",
+    inalatoria: "Inalatória",
+    oftalmica: "Oftálmica",
+    nasal: "Nasal",
+    retal: "Retal",
+};
+
 let medicamentosList = [];
+
+function getViaLabel(via) {
+    return VIA_LABELS[via] || via;
+}
+
+function normalizeMedicamento(item) {
+    if (typeof item === "string") {
+        return { name: item, via: null };
+    }
+
+    return {
+        name: item.name,
+        via: item.via || null
+    };
+}
 
 document.addEventListener("DOMContentLoaded", function() {
     const addMedicineBtn = document.getElementById("add-medicine-btn");
     const novoMedicamentoInput = document.getElementById("novo-medicamento");
+    const medicamentoViaSelect = document.getElementById("medicamento-via");
     const medicamentosList_element = document.getElementById("medicamentos-list");
     const formulario = document.querySelector("form");
 
-    // Carregar medicamentos iniciais da view
-    const initialItems = document.querySelectorAll(".medicine-item");
-    initialItems.forEach(item => {
-        const medicName = item.querySelector("span").textContent;
-        if (medicName) {
-            medicamentosList.push(medicName);
+    function updateViaSelectStyle() {
+        medicamentoViaSelect.classList.toggle("is-placeholder", !medicamentoViaSelect.value);
+    }
+
+    medicamentoViaSelect.addEventListener("change", updateViaSelectStyle);
+    updateViaSelectStyle();
+
+    document.querySelectorAll(".medicine-item").forEach((item) => {
+        const name = item.dataset.name;
+        if (!name) {
+            return;
         }
+
+        medicamentosList.push({
+            name,
+            via: item.dataset.via || null
+        });
     });
 
-    // Adicionar medicamento
     addMedicineBtn.addEventListener("click", function() {
         const medicName = novoMedicamentoInput.value.trim();
+        const selectedVia = medicamentoViaSelect.value || null;
 
         if (!medicName) {
             alert("Digite o nome do medicamento");
             return;
         }
 
-        medicamentosList.push(medicName);
+        medicamentosList.push({
+            name: medicName,
+            via: selectedVia
+        });
+
         novoMedicamentoInput.value = "";
+        medicamentoViaSelect.value = "";
+        updateViaSelectStyle();
         renderMedicamentos();
     });
 
-    // Permitir adicionar com Enter
     novoMedicamentoInput.addEventListener("keypress", function(e) {
         if (e.key === "Enter") {
+            e.preventDefault();
             addMedicineBtn.click();
         }
     });
 
-    // Remover medicamento
     document.addEventListener("click", function(e) {
         if (e.target.classList.contains("remove-medicine")) {
             const index = e.target.dataset.index;
@@ -48,9 +90,6 @@ document.addEventListener("DOMContentLoaded", function() {
 
     const sexInputs = document.querySelectorAll('input[name="biological_sex"]');
     const pregnancyInputs = document.querySelectorAll('input[name="is_pregnant"]');
-    const pregnancyLabels = document.querySelectorAll('input[name="is_pregnant"]');
-    const idadeInput = document.getElementById("idade");
-    const comorbidadesInput = document.getElementById("comorbidades");
 
     function updatePregnancyState() {
         const selectedSex = document.querySelector('input[name="biological_sex"]:checked');
@@ -64,24 +103,23 @@ document.addEventListener("DOMContentLoaded", function() {
         });
 
         pregnancyInputs.forEach((input) => {
-            const label = input.closest('label');
+            const label = input.closest("label");
             if (label) {
                 if (!shouldEnable) {
-                    label.classList.add('disabled');
+                    label.classList.add("disabled");
                 } else {
-                    label.classList.remove('disabled');
+                    label.classList.remove("disabled");
                 }
             }
         });
     }
 
     sexInputs.forEach((input) => {
-        input.addEventListener('change', updatePregnancyState);
+        input.addEventListener("change", updatePregnancyState);
     });
 
     updatePregnancyState();
 
-    // Validar e enviar formulário
     formulario.addEventListener("submit", function(e) {
         e.preventDefault();
 
@@ -90,35 +128,19 @@ document.addEventListener("DOMContentLoaded", function() {
             return;
         }
 
-        const payloadPreview = {
-            drugs: medicamentosList,
-            patient: {
-                age: idadeInput && idadeInput.value !== "" ? Number(idadeInput.value) : null,
-                biological_sex: document.querySelector('input[name="biological_sex"]:checked')?.value || null,
-                is_pregnant: (() => {
-                    const selected = document.querySelector('input[name="is_pregnant"]:checked')?.value;
-                    return selected === "true" ? true : selected === "false" ? false : null;
-                })(),
-                comorbidities: comorbidadesInput && comorbidadesInput.value
-                    ? comorbidadesInput.value.split(",").map(c => c.trim()).filter(c => c)
-                    : null
-            }
-        };
-        console.debug("DEBUG - JSON de análise (frontend):", JSON.stringify(payloadPreview, null, 2));
-
-        // Limpa campos hidden antigos para evitar duplicação em múltiplos submits.
         formulario.querySelectorAll('input[type="hidden"][name="medicamentos"]').forEach((el) => el.remove());
 
-        // Serializa a lista dinâmica de medicamentos para o POST do formulário.
         medicamentosList.forEach((med) => {
             const hidden = document.createElement("input");
             hidden.type = "hidden";
             hidden.name = "medicamentos";
-            hidden.value = med;
+            hidden.value = JSON.stringify({
+                name: med.name,
+                via: med.via
+            });
             formulario.appendChild(hidden);
         });
 
-        // Enviar formulário normalmente (via POST)
         formulario.submit();
     });
 
@@ -126,16 +148,24 @@ document.addEventListener("DOMContentLoaded", function() {
         medicamentosList_element.innerHTML = "";
 
         medicamentosList.forEach((med, index) => {
+            const normalized = normalizeMedicamento(med);
             const div = document.createElement("div");
             div.className = "medicine-item";
+
+            const viaHtml = normalized.via
+                ? `<span class="medicine-item-via">Via: ${getViaLabel(normalized.via)}</span>`
+                : "";
+
             div.innerHTML = `
-                <span>${med}</span>
+                <div class="medicine-item-content">
+                    <span class="medicine-item-name">${normalized.name}</span>
+                    ${viaHtml}
+                </div>
                 <button type="button" class="remove-medicine" data-index="${index}">×</button>
             `;
             medicamentosList_element.appendChild(div);
         });
     }
 
-    // Render inicial
     renderMedicamentos();
 });
