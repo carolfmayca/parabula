@@ -31,6 +31,57 @@ class DrugRequest(BaseModel):
     patient: Patient
 
 
+def normalizar_severidade(valor: str | None) -> str:
+    """Normaliza severidade para low/medium/high, com fallback seguro."""
+    if not valor:
+        return "medium"
+
+    normalized = str(valor).strip().lower()
+    if normalized in {"high", "alta"}:
+        return "high"
+    if normalized in {"low", "baixa"}:
+        return "low"
+    if normalized in {"medium", "media", "média"}:
+        return "medium"
+    return "medium"
+
+
+def ajustar_severidade_saida(resultado_interacoes: dict, resultado_riscos: dict) -> tuple[dict, dict]:
+    """
+    Garante consistência da severidade:
+    - sem interação -> low
+    - sem risco clínico -> low
+    """
+    interactions_summary = resultado_interacoes.get("summary", {})
+    interactions_details = resultado_interacoes.get("details", [])
+
+    # Se não vier lista válida, tratar como ausência de interação.
+    if not isinstance(interactions_details, list):
+        interactions_details = []
+
+    interactions_found = bool(interactions_summary.get("interactions_found")) and len(interactions_details) > 0
+
+    interactions_summary["interactions_found"] = interactions_found
+    interactions_summary["severity"] = "low" if not interactions_found else normalizar_severidade(
+        interactions_summary.get("severity")
+    )
+    resultado_interacoes["summary"] = interactions_summary
+    resultado_interacoes["details"] = interactions_details
+
+    risks_items = resultado_riscos.get("items", [])
+    if not isinstance(risks_items, list):
+        risks_items = []
+
+    risks_found = bool(resultado_riscos.get("risks_found")) and len(risks_items) > 0
+    resultado_riscos["risks_found"] = risks_found
+    resultado_riscos["severity"] = "low" if not risks_found else normalizar_severidade(
+        resultado_riscos.get("severity")
+    )
+    resultado_riscos["items"] = risks_items
+
+    return resultado_interacoes, resultado_riscos
+
+
 def chamar_modelo(client: OpenRouter, prompt: str) -> dict:
     """Chama o modelo e já retorna o JSON parseado, lançando HTTPException se falhar."""
     response = client.chat.send(
@@ -275,6 +326,11 @@ def check_interactions(data: DrugRequest):
     resultado_riscos = chamar_modelo(
         client,
         prompt_riscos_clinicos(drugs, data.patient, bulas_texto)
+    )
+
+    resultado_interacoes, resultado_riscos = ajustar_severidade_saida(
+        resultado_interacoes,
+        resultado_riscos,
     )
 
     return {
