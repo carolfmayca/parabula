@@ -59,13 +59,21 @@ except ModuleNotFoundError:
 
 
 def buscar_ou_importar_medicamento(supabase_client, drug: str):
-    medicamentos_encontrados = buscar_medicamento(supabase_client, drug)
-    if medicamentos_encontrados:
-        return medicamentos_encontrados, None
+    candidatos = []
+
+    candidatos.append(drug)
 
     drug_busca = remover_acentos(drug)
     if drug_busca != drug:
-        medicamentos_encontrados = buscar_medicamento(supabase_client, drug_busca)
+        candidatos.append(drug_busca)
+
+    vistos = set()
+    for candidato in candidatos:
+        if candidato in vistos:
+            continue
+        vistos.add(candidato)
+
+        medicamentos_encontrados = buscar_medicamento(supabase_client, candidato)
         if medicamentos_encontrados:
             return medicamentos_encontrados, None
 
@@ -82,7 +90,10 @@ def buscar_ou_importar_medicamento(supabase_client, drug: str):
         }
 
     if resultado_importacao.get("importado"):
-        medicamentos_encontrados = buscar_medicamento(supabase_client, drug)
+        medicamentos_encontrados = buscar_medicamento(
+            supabase_client,
+            drug,
+        )
 
     return medicamentos_encontrados, resultado_importacao
 

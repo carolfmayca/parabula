@@ -88,7 +88,6 @@ def montar_contexto_medicamentos_considerados(
 ) -> str:
     nomes_considerados = {drug.lower() for drug in drugs_considerados}
     linhas = []
-    nomes_incluidos = set()
 
     for drug in drogas_requisitadas:
         if drug.name not in nomes_considerados and drug.name.lower() not in nomes_considerados:
@@ -98,13 +97,11 @@ def montar_contexto_medicamentos_considerados(
         if drug.via:
             linha += f" (via: {drug.via})"
         linhas.append(linha)
-        nomes_incluidos.add(drug.name.lower())
 
-    for drug in drugs_considerados:
-        if drug.lower() not in nomes_incluidos:
-            linhas.append(f"- {drug}")
+    if linhas:
+        return "\n".join(linhas)
 
-    return "\n".join(linhas)
+    return "\n".join(f"- {drug}" for drug in drugs_considerados)
 
 
 @app.post("/drug-interactions/check")

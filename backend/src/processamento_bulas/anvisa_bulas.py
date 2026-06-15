@@ -38,6 +38,9 @@ def get_com_retry(scraper, url: str, *, headers: dict | None = None, descricao: 
             mensagem_erro = f"status {response.status_code}"
             if response.ok:
                 return response
+            if response.status_code == 403:
+                print(f"[ERRO] {descricao} bloqueada pela ANVISA ({mensagem_erro})")
+                return response
 
         if tentativa < RETRIES:
             print(
@@ -168,7 +171,12 @@ def baixar_primeira_bula_profissional(
             f"/bula/parecer/{id_bula}/?Authorization="
         )
 
-        resp = get_com_retry(scraper, url_pdf, descricao=f"download da bula '{rotulo_arquivo}'")
+        resp = get_com_retry(
+            scraper,
+            url_pdf,
+            headers=HEADERS,
+            descricao=f"download da bula '{rotulo_arquivo}'",
+        )
         if not resp or not resp.ok:
             status = resp.status_code if resp else "sem resposta"
             print(f"[ERRO] {rotulo_arquivo} ({origem}) -> falha ao baixar PDF ({status})")

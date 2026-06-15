@@ -4,6 +4,7 @@ from typing import Any
 def _importar_coleta_anvisa():
     try:
         from backend.src.processamento_bulas.coleta.anvisa import (
+            HEADERS,
             criar_scraper,
             extrair_principios_ativos,
             get_com_retry,
@@ -16,6 +17,7 @@ def _importar_coleta_anvisa():
         if exc.name not in {"backend", "backend.src"}:
             raise
         from src.processamento_bulas.coleta.anvisa import (
+            HEADERS,
             criar_scraper,
             extrair_principios_ativos,
             get_com_retry,
@@ -26,6 +28,7 @@ def _importar_coleta_anvisa():
         )
 
     return {
+        "HEADERS": HEADERS,
         "criar_scraper": criar_scraper,
         "extrair_principios_ativos": extrair_principios_ativos,
         "get_com_retry": get_com_retry,
@@ -122,6 +125,33 @@ def resolver_principio_ativo(scraper, nome: str, registro_anvisa: dict, origem_b
     return registro_anvisa.get("nomeProduto") or nome
 
 
+def registro_corresponde_ao_nome(scraper, nome: str, registro_anvisa: dict) -> tuple[bool, list[str]]:
+    coleta = _importar_coleta_anvisa()
+    normalizar_nome = coleta["normalizar_nome"]
+
+    nome_normalizado = normalizar_nome(nome)
+    produto_normalizado = normalizar_nome(registro_anvisa.get("nomeProduto") or "")
+    principios = []
+
+    processo = registro_anvisa.get("numProcesso")
+    if processo:
+        detalhes = coleta["get_detalhes_medicamento"](scraper, processo)
+        principios = coleta["extrair_principios_ativos"](detalhes)
+
+    principios_normalizados = {normalizar_nome(principio) for principio in principios}
+    corresponde_produto = (
+        bool(produto_normalizado)
+        and (
+            nome_normalizado == produto_normalizado
+            or nome_normalizado in produto_normalizado
+            or produto_normalizado in nome_normalizado
+        )
+    )
+    corresponde_principio = nome_normalizado in principios_normalizados
+
+    return corresponde_produto or corresponde_principio, principios
+
+
 def conteudo_tem_secoes(conteudo_json: dict) -> bool:
     return any(valor for valor in conteudo_json.values())
 
@@ -150,11 +180,27 @@ def importar_medicamento_desconhecido(client, nome: str) -> dict[str, Any]:
             "mensagem": f"Medicamento '{nome}' não encontrado na ANVISA.",
         }
 
+    registro_compativel, principios = registro_corresponde_ao_nome(
+        scraper,
+        nome,
+        registro_anvisa,
+    )
+    if not registro_compativel:
+        return {
+            "importado": False,
+            "motivo": "resultado_anvisa_incompativel",
+            "mensagem": (
+                f"A ANVISA retornou '{registro_anvisa.get('nomeProduto')}' "
+                f"para '{nome}', mas o resultado não parece corresponder ao medicamento."
+            ),
+        }
+
     id_bula = registro_anvisa["idBulaProfissionalProtegido"]
     fonte_url = montar_url_bula_profissional(id_bula)
     response = coleta["get_com_retry"](
         scraper,
         fonte_url,
+        headers=coleta["HEADERS"],
         descricao=f"download automático da bula '{nome}'",
     )
     if not response or not response.ok:
@@ -173,7 +219,12 @@ def importar_medicamento_desconhecido(client, nome: str) -> dict[str, Any]:
         }
 
     principio_ativo = normalizar_nome(
-        resolver_principio_ativo(scraper, nome, registro_anvisa, origem_busca)
+        principios[0] if principios else resolver_principio_ativo(
+            scraper,
+            nome,
+            registro_anvisa,
+            origem_busca,
+        )
     )
     medicamento = inserir_medicamento(client, principio_ativo)
     medicamento_id = medicamento["id"]
@@ -214,4 +265,3 @@ def importar_medicamento_desconhecido(client, nome: str) -> dict[str, Any]:
         "produto": produto,
         "processo": registro_anvisa.get("numProcesso"),
     }
-

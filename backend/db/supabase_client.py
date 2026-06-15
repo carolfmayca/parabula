@@ -294,7 +294,31 @@ def inserir_alias(
 
 def buscar_medicamento(client: Client, nome: str) -> list[dict]:
     """Busca medicamento por nome (princípio ativo ou alias)."""
-    # Buscar por princípio ativo
+    nome = nome.strip()
+
+    # Buscar por princípio ativo exato
+    resultado_exato = (
+        client.table("medicamento")
+        .select("*")
+        .ilike("principio_ativo", nome)
+        .execute()
+    )
+
+    if resultado_exato.data:
+        return resultado_exato.data
+
+    # Buscar por alias exato
+    resultado_alias_exato = (
+        client.table("medicamento_alias")
+        .select("*, medicamento(*)")
+        .ilike("alias", nome)
+        .execute()
+    )
+
+    if resultado_alias_exato.data:
+        return [item["medicamento"] for item in resultado_alias_exato.data]
+
+    # Buscar por princípio ativo parcial
     resultado = (
         client.table("medicamento")
         .select("*")
@@ -305,7 +329,7 @@ def buscar_medicamento(client: Client, nome: str) -> list[dict]:
     if resultado.data:
         return resultado.data
 
-    # Buscar por alias
+    # Buscar por alias parcial
     resultado_alias = (
         client.table("medicamento_alias")
         .select("*, medicamento(*)")
