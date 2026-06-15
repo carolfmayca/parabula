@@ -25,6 +25,19 @@ def check_interactions(data: DrugRequest):
     num_drugs = len(drugs)
 
     patient = data.patient
+
+    # VALIDAÇÃO 0: Consistência dos dados do paciente
+    if patient.is_pregnant and patient.biological_sex == "male":
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INVALID_PATIENT_DATA",
+                "message": (
+                    "Pacientes do sexo biológico masculino não podem ser marcados como grávidos."
+                )
+            }
+        )
+
     perfil_paciente = []
 
     if patient.age is not None:
@@ -95,20 +108,65 @@ def check_interactions(data: DrugRequest):
             }
         )
 
-    bulas_texto = montar_bulas_texto(drugs, supabase_client)
+    resultado_bulas = montar_bulas_texto(
+        drugs,
+        supabase_client,
+        retornar_metadados=True,
+    )
+    bulas_texto = resultado_bulas["bulas_texto"]
+    ignored_drugs = resultado_bulas["ignored_drugs"]
+    drugs_considerados = []
+    vistos = set()
+    for drug in resultado_bulas["drugs_considerados"]:
+        if drug not in vistos:
+            drugs_considerados.append(drug)
+            vistos.add(drug)
+
+    if not drugs_considerados:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "NO_DRUGS_AVAILABLE",
+                "message": (
+                    "Nenhum dos medicamentos informados foi encontrado no banco "
+                    "ou na ANVISA."
+                ),
+                "ignored_drugs": ignored_drugs,
+            },
+        )
 
     client = OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY"))
-    
-    #cenario 2: 1 medicamento e dados do paciente
-    if num_drugs == 1 and has_patient:
+
+    num_drugs_considerados = len(drugs_considerados)
+
+    if num_drugs_considerados == 1 and not has_patient:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "INSUFFICIENT_AVAILABLE_INFORMATION",
+                "message": (
+                    "A análise ficou com apenas um medicamento disponível "
+                    "e nenhuma informação do paciente."
+                ),
+                "ignored_drugs": ignored_drugs,
+            }
+        )
+
+    #cenario 2: 1 medicamento disponível e dados do paciente
+    if num_drugs_considerados == 1 and has_patient:
         resultado_riscos = chamar_modelo(
             client,
-            prompt_riscos_clinicos(drugs,bulas_texto, perfil_paciente_str)
+            prompt_riscos_clinicos(
+                drugs_considerados,
+                bulas_texto,
+                perfil_paciente_str,
+            )
         )
 
         return {
             "success": True,
-            "drugs": drugs,
+            "drugs": drugs_considerados,
+            "ignored_drugs": ignored_drugs,
             "clinical_risks": {
                 "risks_found": resultado_riscos["risks_found"],
                 "severity": resultado_riscos["severity"],
@@ -116,36 +174,42 @@ def check_interactions(data: DrugRequest):
             }
         }
     
-    #cenario 3: 2 ou + medicamentos sem dados do paciente
-    if num_drugs >= 2 and not has_patient:
+    #cenario 3: 2 ou + medicamentos disponíveis sem dados do paciente
+    if num_drugs_considerados >= 2 and not has_patient:
         resultado_interacoes = chamar_modelo(
             client,
-            prompt_interacoes(drugs, bulas_texto)
+            prompt_interacoes(drugs_considerados, bulas_texto)
         )
 
         return {
             "success": True,
-            "drugs": drugs,
+            "drugs": drugs_considerados,
+            "ignored_drugs": ignored_drugs,
             "interactions": {
                 "summary": resultado_interacoes["summary"],
                 "details": resultado_interacoes["details"]
             }
         }
     
-    #cenario 4: 2 ou + medicamentos com dados do paciente
-    if num_drugs >= 2 and has_patient:
+    #cenario 4: 2 ou + medicamentos disponíveis com dados do paciente
+    if num_drugs_considerados >= 2 and has_patient:
         resultado_interacoes = chamar_modelo(
             client,
-            prompt_interacoes(drugs, bulas_texto)
+            prompt_interacoes(drugs_considerados, bulas_texto)
         )
         resultado_riscos = chamar_modelo(
             client,
-            prompt_riscos_clinicos(drugs,bulas_texto, perfil_paciente_str)
+            prompt_riscos_clinicos(
+                drugs_considerados,
+                bulas_texto,
+                perfil_paciente_str,
+            )
         )
 
         return {
             "success": True,
-            "drugs": drugs,
+            "drugs": drugs_considerados,
+            "ignored_drugs": ignored_drugs,
             "interactions": {
                 "summary": resultado_interacoes["summary"],
                 "details": resultado_interacoes["details"]

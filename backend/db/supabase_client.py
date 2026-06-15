@@ -77,6 +77,7 @@ def registrar_atualizacao_bula(
     status_verificacao: str,
     mensagem: str | None = None,
     fonte_url: str | None = None,
+    atualizar_ultima_atualizacao: bool | None = None,
 ) -> dict | None:
     """Registra o resultado da verificação/atualização da bula do medicamento."""
     agora = datetime.now(timezone.utc).isoformat()
@@ -89,7 +90,10 @@ def registrar_atualizacao_bula(
         "updated_at": agora,
     }
 
-    if status_verificacao == "atualizada":
+    if atualizar_ultima_atualizacao is None:
+        atualizar_ultima_atualizacao = status_verificacao == "atualizada"
+
+    if atualizar_ultima_atualizacao:
         dados["ultima_atualizacao_em"] = agora
 
     resultado = (
@@ -176,17 +180,26 @@ def backfill_atualizacoes_bula(client: Client) -> dict:
     }
 
 
+def calcular_hash_conteudo_bula(conteudo_json: dict) -> str:
+    """Calcula o hash estável usado para comparar versões de uma bula."""
+    return hashlib.sha256(
+        json.dumps(conteudo_json, sort_keys=True, ensure_ascii=False).encode()
+    ).hexdigest()
+
+
 def inserir_bula(
-    client: Client, medicamento_id: int, conteudo_json: dict, pdf_path: str = None
+    client: Client,
+    medicamento_id: int,
+    conteudo_json: dict,
+    pdf_path: str = None,
+    fonte_url: str = None,
 ) -> dict:
     """
     Insere ou atualiza a bula de um medicamento.
     Se o conteúdo for idêntico (mesmo hash), não duplica.
     """
     # Calcular hash do conteúdo
-    hash_conteudo = hashlib.sha256(
-        json.dumps(conteudo_json, sort_keys=True, ensure_ascii=False).encode()
-    ).hexdigest()
+    hash_conteudo = calcular_hash_conteudo_bula(conteudo_json)
 
     # Verificar se já existe bula com mesmo hash
     existente = (
@@ -224,6 +237,8 @@ def inserir_bula(
     }
     if pdf_path:
         dados["pdf_path"] = pdf_path
+    if fonte_url:
+        dados["fonte_url"] = fonte_url
 
     resultado = client.table("bula_medicamento").insert(dados).execute()
     bula_inserida = resultado.data[0]
@@ -238,7 +253,7 @@ def inserir_bula(
                 "Nova bula vigente inserida. "
                 f"Bula(s) anterior(es) marcada(s) como não vigente(s): {ids_anteriores}."
             ),
-            fonte_url=pdf_path,
+            fonte_url=fonte_url or pdf_path,
         )
 
     return {**bula_inserida, "_status": "adicionado"}
