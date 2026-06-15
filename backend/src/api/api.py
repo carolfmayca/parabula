@@ -20,12 +20,17 @@ app = FastAPI()
 
 @app.post("/drug-interactions/check")
 def check_interactions(data: DrugRequest):
+    import logging
+    logger = logging.getLogger('uvicorn.error')
 
+    logger.info("rota corretamente chamada")
     drugs = data.drugs
     drug_names = [drug.name for drug in drugs]
-    contexto_medicamentos_str = data.montar_contexto_medicamentos(drugs)
+    contexto_medicamentos_str = data.montar_contexto_medicamentos()
     num_drugs = len(drugs)
 
+    logger.info(f"Medicamentos recebidos: {drug_names}")
+    
     patient = data.patient
     perfil_paciente = []
 
@@ -49,6 +54,7 @@ def check_interactions(data: DrugRequest):
 
     perfil_paciente_str = "\n".join(perfil_paciente)
     has_patient = bool(perfil_paciente)
+    logger.info("Informações do paciente coletadas")
 
     # VALIDAÇÃO 1: Medicamentos duplicados
     if len(drug_names) != len(set(drug_names)):
@@ -84,7 +90,7 @@ def check_interactions(data: DrugRequest):
             }
         )
     
-
+    logger.info("passou das validações")
     # BUSCA DAS BULAS (única vez, reutilizado nos dois prompts)
     try:
         supabase_client = get_client()
@@ -98,7 +104,9 @@ def check_interactions(data: DrugRequest):
         )
 
     texto_riscos = montar_bulas_texto(drug_names, supabase_client, ["CONTRAINDICAÇÕES", "ADVERTÊNCIAS E PRECAUÇÕES", "POSOLOGIA E MODO DE USAR"])
-    texto_interacoes = montar_bulas_texto(drug_names, supabase_client, ["INTERAÇÕES MEDICAMENTOSAS"])
+    texto_interacoes = montar_bulas_texto(drug_names, supabase_client, ["INTERAÇÕES MEDICAMENTOSAS","POSOLOGIA E MODO DE USAR"])
+
+    logger.info("pegou as informações de bula")
 
     client = OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY"))
     
@@ -128,7 +136,7 @@ def check_interactions(data: DrugRequest):
     if num_drugs >= 2 and not has_patient:
         resultado_interacoes = chamar_modelo(
             client,
-            prompt_interacoes(drug_names, texto_interacoes, contexto_medicamentos_str)
+            prompt_interacoes(texto_interacoes, contexto_medicamentos_str)
         )
 
         return {
@@ -144,7 +152,7 @@ def check_interactions(data: DrugRequest):
     if num_drugs >= 2 and has_patient:
         resultado_interacoes = chamar_modelo(
             client,
-            prompt_interacoes(drug_names, texto_interacoes, contexto_medicamentos_str)
+            prompt_interacoes(texto_interacoes, contexto_medicamentos_str)
         )
         resultado_riscos = chamar_modelo(
             client,
