@@ -33,11 +33,44 @@ def remover_acentos(texto: str) -> str:
 from typing import List
 try:
     from backend.db.supabase_client import buscar_medicamento, buscar_bula
+    from backend.src.processamento_bulas.importacao_automatica import (
+        importar_medicamento_desconhecido,
+    )
 except ModuleNotFoundError:
     from db.supabase_client import buscar_medicamento, buscar_bula
+    from src.processamento_bulas.importacao_automatica import (
+        importar_medicamento_desconhecido,
+    )
 
 
-def montar_bulas_texto(drugs: List[str], supabase_client) -> str:
+def buscar_ou_importar_medicamento(supabase_client, drug: str):
+    medicamentos_encontrados = buscar_medicamento(supabase_client, drug)
+    if medicamentos_encontrados:
+        return medicamentos_encontrados, None
+
+    try:
+        resultado_importacao = importar_medicamento_desconhecido(
+            supabase_client,
+            drug,
+        )
+    except Exception as exc:
+        return [], {
+            "importado": False,
+            "motivo": "erro_importacao_anvisa",
+            "mensagem": str(exc),
+        }
+
+    if resultado_importacao.get("importado"):
+        medicamentos_encontrados = buscar_medicamento(supabase_client, drug)
+
+    return medicamentos_encontrados, resultado_importacao
+
+
+def montar_bulas_texto(
+    drugs: List[str],
+    supabase_client,
+    retornar_metadados: bool = False,
+):
     """
     Para cada medicamento, busca no Supabase e monta o bloco de texto das bulas.
     Medicamentos ausentes são buscados automaticamente na ANVISA. Se ainda
@@ -99,7 +132,6 @@ def montar_bulas_texto(drugs: List[str], supabase_client) -> str:
         ------------------------
         """
 
-<<<<<<< HEAD
     if retornar_metadados:
         return {
             "bulas_texto": bulas_texto,
@@ -108,6 +140,4 @@ def montar_bulas_texto(drugs: List[str], supabase_client) -> str:
             "importacoes": importacoes,
         }
 
-=======
->>>>>>> main
     return bulas_texto
