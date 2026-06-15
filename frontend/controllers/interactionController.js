@@ -68,7 +68,9 @@ exports.results = async (req, res) => {
         };
 
         const backendBaseUrl = (process.env.BACKEND_URL || "http://localhost:8000").replace(/\/$/, "");
-
+        
+        console.log(`${backendBaseUrl}/drug-interactions/check`);
+        
         const response = await fetch(`${backendBaseUrl}/drug-interactions/check`, {
             method: "POST",
             headers: {
@@ -76,10 +78,13 @@ exports.results = async (req, res) => {
             },
             body: JSON.stringify(payload)
         });
+        
+        console.log("Chegou aqui")
 
         if (!response.ok) {
-            throw new Error(`API error: ${response.status}`);
+            throw new Error(`API error: ${response.status} ${response.statusText}`);
         }
+
 
         const apiResponse = await response.json();
 
