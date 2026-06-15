@@ -10,6 +10,7 @@ try:
         buscar_medicamento,
         calcular_hash_conteudo_bula,
         get_client,
+        inserir_bula,
         listar_medicamentos,
         registrar_atualizacao_bula,
     )
@@ -21,6 +22,7 @@ except ModuleNotFoundError as exc:
         buscar_medicamento,
         calcular_hash_conteudo_bula,
         get_client,
+        inserir_bula,
         listar_medicamentos,
         registrar_atualizacao_bula,
     )
@@ -237,6 +239,145 @@ def verificar_bula_mais_recente(client, nome_medicamento: str) -> dict[str, Any]
     }
 
 
+def verificar_e_atualizar_bula(client, nome_medicamento: str) -> dict[str, Any]:
+    """
+    Verifica a bula vigente e atualiza o banco quando a ANVISA tiver versão diferente.
+
+    Se o hash do conteúdo atual da ANVISA for igual ao hash vigente no banco, apenas
+    registra a verificação. Se for diferente, insere a nova bula como vigente e
+    marca a versão anterior como não vigente via inserir_bula.
+    """
+    medicamentos = buscar_medicamento(client, nome_medicamento)
+    if not medicamentos:
+        return {
+            "success": False,
+            "status_verificacao": "erro",
+            "acao": "nao_atualizada",
+            "mais_recente": None,
+            "mensagem": f"Medicamento '{nome_medicamento}' não encontrado no banco.",
+        }
+
+    medicamento = medicamentos[0]
+    bula_banco = buscar_bula(client, medicamento["id"])
+    if not bula_banco:
+        registrar_atualizacao_bula(
+            client,
+            medicamento["id"],
+            "erro",
+            mensagem="Medicamento encontrado, mas sem bula vigente no banco.",
+        )
+        return {
+            "success": False,
+            "medicamento": medicamento,
+            "status_verificacao": "erro",
+            "acao": "nao_atualizada",
+            "mais_recente": None,
+            "mensagem": "Medicamento encontrado, mas sem bula vigente no banco.",
+        }
+
+    bula_anvisa = baixar_bula_profissional_atual(medicamento["principio_ativo"])
+    if not bula_anvisa:
+        registrar_atualizacao_bula(
+            client,
+            medicamento["id"],
+            "erro",
+            mensagem="Não foi possível obter a bula profissional atual na ANVISA.",
+        )
+        return {
+            "success": False,
+            "medicamento": medicamento,
+            "bula_banco": {
+                "id": bula_banco["id"],
+                "hash_conteudo": bula_banco.get("hash_conteudo"),
+                "created_at": bula_banco.get("created_at"),
+            },
+            "status_verificacao": "erro",
+            "acao": "nao_atualizada",
+            "mais_recente": None,
+            "mensagem": "Não foi possível obter a bula profissional atual na ANVISA.",
+        }
+
+    extrair_conteudo_secoes_de_bytes = importar_conversor_pdf()
+    conteudo_anvisa = extrair_conteudo_secoes_de_bytes(bula_anvisa["pdf_bytes"])
+    hash_anvisa = calcular_hash_conteudo_bula(conteudo_anvisa)
+    hash_banco = bula_banco.get("hash_conteudo")
+    mais_recente = hash_banco == hash_anvisa
+
+    if mais_recente:
+        mensagem = "A bula vigente no banco corresponde à bula atual da ANVISA."
+        registrar_atualizacao_bula(
+            client,
+            medicamento["id"],
+            "atualizada",
+            mensagem=mensagem,
+            fonte_url=bula_anvisa["fonte_url"],
+            atualizar_ultima_atualizacao=False,
+        )
+        return {
+            "success": True,
+            "medicamento": {
+                "id": medicamento["id"],
+                "principio_ativo": medicamento["principio_ativo"],
+            },
+            "bula_banco": {
+                "id": bula_banco["id"],
+                "hash_conteudo": hash_banco,
+                "created_at": bula_banco.get("created_at"),
+                "pdf_path": bula_banco.get("pdf_path"),
+            },
+            "bula_anvisa": {
+                "hash_conteudo": hash_anvisa,
+                "fonte_url": bula_anvisa["fonte_url"],
+                "id_bula": bula_anvisa["id_bula"],
+                "origem_busca": bula_anvisa["origem_busca"],
+                "produto": bula_anvisa["produto"],
+                "empresa": bula_anvisa["empresa"],
+                "processo": bula_anvisa["processo"],
+            },
+            "status_verificacao": "atualizada",
+            "acao": "mantida",
+            "mais_recente": True,
+            "mensagem": mensagem,
+        }
+
+    nova_bula = inserir_bula(
+        client,
+        medicamento["id"],
+        conteudo_anvisa,
+        fonte_url=bula_anvisa["fonte_url"],
+    )
+    mensagem = "Bula diferente encontrada na ANVISA e cadastrada como nova versão vigente."
+
+    return {
+        "success": True,
+        "medicamento": {
+            "id": medicamento["id"],
+            "principio_ativo": medicamento["principio_ativo"],
+        },
+        "bula_anterior": {
+            "id": bula_banco["id"],
+            "hash_conteudo": hash_banco,
+            "created_at": bula_banco.get("created_at"),
+            "pdf_path": bula_banco.get("pdf_path"),
+        },
+        "bula_nova": {
+            "id": nova_bula.get("id"),
+            "hash_conteudo": hash_anvisa,
+            "status": nova_bula.get("_status"),
+            "fonte_url": bula_anvisa["fonte_url"],
+            "id_bula_anvisa": bula_anvisa["id_bula"],
+            "origem_busca": bula_anvisa["origem_busca"],
+            "produto": bula_anvisa["produto"],
+            "empresa": bula_anvisa["empresa"],
+            "processo": bula_anvisa["processo"],
+        },
+        "status_verificacao": "atualizada",
+        "acao": "atualizada",
+        "mais_recente": False,
+        "mensagem": mensagem,
+    }
+
+
 def verificar_todas_bulas(client, pausa: float = 2.0) -> list[dict[str, Any]]:
     """Verifica todos os medicamentos cadastrados no banco."""
     resultados = []
@@ -272,6 +413,42 @@ def verificar_todas_bulas(client, pausa: float = 2.0) -> list[dict[str, Any]]:
     return resultados
 
 
+def verificar_e_atualizar_todas_bulas(client, pausa: float = 2.0) -> list[dict[str, Any]]:
+    """Verifica todos os medicamentos cadastrados e atualiza os desatualizados."""
+    resultados = []
+    medicamentos = listar_medicamentos(client)
+
+    for medicamento in medicamentos:
+        principio_ativo = medicamento["principio_ativo"]
+        print(f"\n=== Verificando e atualizando {principio_ativo} ===")
+        try:
+            resultado = verificar_e_atualizar_bula(client, principio_ativo)
+        except Exception as erro:
+            resultado = {
+                "success": False,
+                "medicamento": {
+                    "id": medicamento.get("id"),
+                    "principio_ativo": principio_ativo,
+                },
+                "status_verificacao": "erro",
+                "acao": "nao_atualizada",
+                "mais_recente": None,
+                "mensagem": str(erro),
+            }
+            registrar_atualizacao_bula(
+                client,
+                medicamento["id"],
+                "erro",
+                mensagem=str(erro),
+            )
+
+        resultados.append(resultado)
+        print(resultado["mensagem"])
+        time.sleep(pausa)
+
+    return resultados
+
+
 def imprimir_json(dados: Any):
     print(json.dumps(dados, ensure_ascii=False, indent=2))
 
@@ -290,6 +467,11 @@ def main():
         help="Verifica todos os medicamentos cadastrados.",
     )
     parser.add_argument(
+        "--atualizar",
+        action="store_true",
+        help="Quando houver diferença, cadastra a bula atual da ANVISA como vigente.",
+    )
+    parser.add_argument(
         "--pausa",
         type=float,
         default=2.0,
@@ -302,8 +484,16 @@ def main():
 
     client = get_client()
 
+    if args.todos and args.atualizar:
+        imprimir_json(verificar_e_atualizar_todas_bulas(client, pausa=args.pausa))
+        return
+
     if args.todos:
         imprimir_json(verificar_todas_bulas(client, pausa=args.pausa))
+        return
+
+    if args.atualizar:
+        imprimir_json(verificar_e_atualizar_bula(client, args.medicamento))
         return
 
     imprimir_json(verificar_bula_mais_recente(client, args.medicamento))
