@@ -51,13 +51,73 @@ def extrair_conteudo_secoes(caminho_pdf: Path) -> dict:
     texto_normalizado = re.sub(r' \n', '\n', texto_normalizado)
     texto_normalizado = re.sub(r'\n{3,}', '\n\n', texto_normalizado)
 
+    # Remove cabeçalhos repetidos extraídos do PDF
+    texto_normalizado = re.sub(
+        r'^[^\n]*_VPS_V\d+\s*$',
+        '',
+        texto_normalizado,
+        flags=re.MULTILINE
+    )
+
+    texto_normalizado = re.sub(
+        r'^[^\n]*_VP_V\d+\s*$',
+        '',
+        texto_normalizado,
+        flags=re.MULTILINE
+    )
+
+    # Remove linhas isoladas com número de página
+    texto_normalizado = re.sub(
+        r'^\s*\d+\s*$',
+        '',
+        texto_normalizado,
+        flags=re.MULTILINE
+    )
+
+    texto_normalizado = re.sub(r'\n{3,}', '\n\n', texto_normalizado)
+
     # Encontrar posições de cada seção no texto
+    # Mapeamento oficial ANVISA
+    SECOES_NUMERADAS = {
+        1: "INDICAÇÕES",
+        2: "RESULTADOS DE EFICÁCIA",
+        3: "CARACTERÍSTICAS FARMACOLÓGICAS",
+        4: "CONTRAINDICAÇÕES",
+        5: "ADVERTÊNCIAS E PRECAUÇÕES",
+        6: "INTERAÇÕES MEDICAMENTOSAS",
+        7: "CUIDADOS DE ARMAZENAMENTO DO MEDICAMENTO",
+        8: "POSOLOGIA E MODO DE USAR",
+        9: "REAÇÕES ADVERSAS",
+        10: "SUPERDOSE",
+    }
+
+    # Detecta apenas títulos reais de seção
+    PADRAO_SECAO = re.compile(
+        r'^\s*(\d{1,2})\.\s*([A-ZÁÀÂÃÉÊÍÓÔÕÚÇ\s]+?)\s*$',
+        re.MULTILINE
+    )
+
     posicoes = []
-    for secao in SECOES_PADRAO:
-        padrao = re.compile(r'(\d+)\.\s*' + re.escape(secao), re.IGNORECASE)
-        match = padrao.search(texto_normalizado)
-        if match:
-            posicoes.append((secao, match.start(), match.end()))
+
+    for match in PADRAO_SECAO.finditer(texto_normalizado):
+        numero = int(match.group(1))
+        titulo = " ".join(match.group(2).split())
+
+        if numero not in SECOES_NUMERADAS:
+            continue
+
+        titulo_esperado = SECOES_NUMERADAS[numero]
+
+        if titulo != titulo_esperado:
+            continue
+
+        posicoes.append(
+            (
+                titulo_esperado,
+                match.start(),
+                match.end()
+            )
+        )
 
     # Marcadores de fim do conteúdo relevante
     fim_marcadores = [
