@@ -1,4 +1,3 @@
-import unicodedata
 from fastapi import FastAPI, HTTPException
 from openrouter import OpenRouter
 import os
@@ -18,12 +17,62 @@ except ModuleNotFoundError:
 
 app = FastAPI()
 
+
+def normalizar_severidade(valor: str | None) -> str:
+    if not valor:
+        return "medium"
+
+    valor_normalizado = str(valor).strip().lower()
+    if valor_normalizado in {"high", "alta"}:
+        return "high"
+    if valor_normalizado in {"medium", "media", "média"}:
+        return "medium"
+    if valor_normalizado in {"low", "baixa"}:
+        return "low"
+    return "medium"
+
+
+def ajustar_interacoes_saida(resultado_interacoes: dict) -> dict:
+    summary = resultado_interacoes.get("summary", {})
+    details = resultado_interacoes.get("details", [])
+
+    if not isinstance(details, list):
+        details = []
+
+    interactions_found = bool(summary.get("interactions_found")) and bool(details)
+    summary["interactions_found"] = interactions_found
+    summary["severity"] = (
+        normalizar_severidade(summary.get("severity"))
+        if interactions_found
+        else "low"
+    )
+
+    resultado_interacoes["summary"] = summary
+    resultado_interacoes["details"] = details
+    return resultado_interacoes
+
+
+def ajustar_riscos_saida(resultado_riscos: dict) -> dict:
+    items = resultado_riscos.get("items", [])
+
+    if not isinstance(items, list):
+        items = []
+
+    risks_found = bool(resultado_riscos.get("risks_found")) and bool(items)
+    resultado_riscos["risks_found"] = risks_found
+    resultado_riscos["severity"] = (
+        normalizar_severidade(resultado_riscos.get("severity"))
+        if risks_found
+        else "low"
+    )
+    resultado_riscos["items"] = items
+    return resultado_riscos
+
+
 @app.post("/drug-interactions/check")
 def check_interactions(data: DrugRequest):
-
     drugs = [drug.lower() for drug in data.drugs]
     num_drugs = len(drugs)
-
     patient = data.patient
 
     # VALIDAÇÃO 0: Consistência dos dados do paciente
@@ -33,9 +82,10 @@ def check_interactions(data: DrugRequest):
             detail={
                 "code": "INVALID_PATIENT_DATA",
                 "message": (
-                    "Pacientes do sexo biológico masculino não podem ser marcados como grávidos."
-                )
-            }
+                    "Pacientes do sexo biológico masculino não podem ser "
+                    "marcados como grávidos."
+                ),
+            },
         )
 
     perfil_paciente = []
@@ -44,14 +94,10 @@ def check_interactions(data: DrugRequest):
         perfil_paciente.append(f"- Idade: {patient.age} anos")
 
     if patient.biological_sex is not None:
-        perfil_paciente.append(
-            f"- Sexo biológico: {patient.biological_sex}"
-        )
+        perfil_paciente.append(f"- Sexo biológico: {patient.biological_sex}")
 
     if patient.is_pregnant is not None:
-        perfil_paciente.append(
-            f"- Grávida: {patient.is_pregnant}"
-        )
+        perfil_paciente.append(f"- Grávida: {patient.is_pregnant}")
 
     if patient.comorbidities:
         perfil_paciente.append(
@@ -67,22 +113,21 @@ def check_interactions(data: DrugRequest):
             status_code=400,
             detail={
                 "code": "DUPLICATE_DRUGS",
-                "message": "Medicamentos duplicados não são permitidos."
-            }
+                "message": "Medicamentos duplicados não são permitidos.",
+            },
         )
-    
-    #VALIDAÇÃO 2: pelo menos 1 medicamento deve ser informado
+
+    # VALIDAÇÃO 2: pelo menos 1 medicamento deve ser informado
     if num_drugs == 0:
         raise HTTPException(
             status_code=400,
             detail={
                 "code": "NO_DRUGS_PROVIDED",
-                "message": "Pelo menos um medicamento deve ser informado."
-            }
+                "message": "Pelo menos um medicamento deve ser informado.",
+            },
         )
-    
-    #VALIDAÇÃO 3: em caso de 1 medicamento, os dados clinicos devem ser informados
-    #cenario 1: medicamento sem dados do paciente = não processa
+
+    # VALIDAÇÃO 3: em caso de 1 medicamento, os dados clínicos devem ser informados
     if num_drugs == 1 and not has_patient:
         raise HTTPException(
             status_code=400,
@@ -91,12 +136,11 @@ def check_interactions(data: DrugRequest):
                 "message": (
                     "Não é possível realizar a análise com apenas "
                     "um medicamento sem informações do paciente."
-                )
-            }
+                ),
+            },
         )
-    
 
-    # BUSCA DAS BULAS (única vez, reutilizado nos dois prompts)
+    # BUSCA DAS BULAS (única vez, reutilizada nos prompts)
     try:
         supabase_client = get_client()
     except Exception as exc:
@@ -104,8 +148,8 @@ def check_interactions(data: DrugRequest):
             status_code=500,
             detail={
                 "code": "SUPABASE_CONNECTION_ERROR",
-                "message": f"Falha ao conectar ao Supabase: {exc}"
-            }
+                "message": f"Falha ao conectar ao Supabase: {exc}",
+            },
         )
 
     resultado_bulas = montar_bulas_texto(
@@ -136,7 +180,6 @@ def check_interactions(data: DrugRequest):
         )
 
     client = OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY"))
-
     num_drugs_considerados = len(drugs_considerados)
 
     if num_drugs_considerados == 1 and not has_patient:
@@ -149,10 +192,10 @@ def check_interactions(data: DrugRequest):
                     "e nenhuma informação do paciente."
                 ),
                 "ignored_drugs": ignored_drugs,
-            }
+            },
         )
 
-    #cenario 2: 1 medicamento disponível e dados do paciente
+    # Cenario 2: 1 medicamento disponível e dados do paciente
     if num_drugs_considerados == 1 and has_patient:
         resultado_riscos = chamar_modelo(
             client,
@@ -160,8 +203,9 @@ def check_interactions(data: DrugRequest):
                 drugs_considerados,
                 bulas_texto,
                 perfil_paciente_str,
-            )
+            ),
         )
+        resultado_riscos = ajustar_riscos_saida(resultado_riscos)
 
         return {
             "success": True,
@@ -170,16 +214,17 @@ def check_interactions(data: DrugRequest):
             "clinical_risks": {
                 "risks_found": resultado_riscos["risks_found"],
                 "severity": resultado_riscos["severity"],
-                "items": resultado_riscos["items"]
-            }
+                "items": resultado_riscos["items"],
+            },
         }
-    
-    #cenario 3: 2 ou + medicamentos disponíveis sem dados do paciente
+
+    # Cenario 3: 2 ou + medicamentos disponíveis sem dados do paciente
     if num_drugs_considerados >= 2 and not has_patient:
         resultado_interacoes = chamar_modelo(
             client,
-            prompt_interacoes(drugs_considerados, bulas_texto)
+            prompt_interacoes(drugs_considerados, bulas_texto),
         )
+        resultado_interacoes = ajustar_interacoes_saida(resultado_interacoes)
 
         return {
             "success": True,
@@ -187,15 +232,15 @@ def check_interactions(data: DrugRequest):
             "ignored_drugs": ignored_drugs,
             "interactions": {
                 "summary": resultado_interacoes["summary"],
-                "details": resultado_interacoes["details"]
-            }
+                "details": resultado_interacoes["details"],
+            },
         }
-    
-    #cenario 4: 2 ou + medicamentos disponíveis com dados do paciente
+
+    # Cenario 4: 2 ou + medicamentos disponíveis com dados do paciente
     if num_drugs_considerados >= 2 and has_patient:
         resultado_interacoes = chamar_modelo(
             client,
-            prompt_interacoes(drugs_considerados, bulas_texto)
+            prompt_interacoes(drugs_considerados, bulas_texto),
         )
         resultado_riscos = chamar_modelo(
             client,
@@ -203,8 +248,10 @@ def check_interactions(data: DrugRequest):
                 drugs_considerados,
                 bulas_texto,
                 perfil_paciente_str,
-            )
+            ),
         )
+        resultado_interacoes = ajustar_interacoes_saida(resultado_interacoes)
+        resultado_riscos = ajustar_riscos_saida(resultado_riscos)
 
         return {
             "success": True,
@@ -212,11 +259,11 @@ def check_interactions(data: DrugRequest):
             "ignored_drugs": ignored_drugs,
             "interactions": {
                 "summary": resultado_interacoes["summary"],
-                "details": resultado_interacoes["details"]
+                "details": resultado_interacoes["details"],
             },
             "clinical_risks": {
                 "risks_found": resultado_riscos["risks_found"],
                 "severity": resultado_riscos["severity"],
-                "items": resultado_riscos["items"]
-            }
-        }  
+                "items": resultado_riscos["items"],
+            },
+        }
