@@ -10,9 +10,9 @@ A versão atual considera medicamentos, idade, sexo biológico, gravidez e comor
 parabula/
 ├── backend/                  # API, banco, LLM e processamento de bulas
 ├── frontend/                 # Interface web
-├── bulas_pdf/                # PDFs de bulas baixados da ANVISA
-├── bulas_json/               # Bulas convertidas para JSON
-├── data/                     # Bases auxiliares
+├── data/                     # Bases auxiliares e bulas processadas
+│   ├── bulas_pdf/            # PDFs de bulas baixados da ANVISA
+│   └── bulas_json/           # Bulas convertidas para JSON
 └── docs/                     # Contexto de produto e respostas do professor
 ```
 
@@ -98,4 +98,3 @@ git add .
 git commit -m "feat: descreve a mudança"
 git push -u origin feature/nova-feature
 ```
-
