@@ -2,5 +2,5 @@
 venv/
 __pycache__/
 .venv/
-bulas_pdf/
-data/
+data/DB-Anvisa2.csv.zip
+data/bulas_pdf/*
