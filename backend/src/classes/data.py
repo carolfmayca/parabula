@@ -4,7 +4,7 @@ from typing import List, Literal, Optional
 from pydantic import BaseModel, field_validator, model_validator
 
 
-@dataclass
+
 class Patient(BaseModel):
     age: Optional[int] = None
     biological_sex: Optional[Literal["female", "male", "other"]] = None
@@ -30,7 +30,7 @@ class Drug(BaseModel):
         return normalized or None
 
 
-@dataclass
+
 class DrugRequest(BaseModel):
     drugs: List[Drug]
     patient: Patient
@@ -55,10 +55,9 @@ class DrugRequest(BaseModel):
         data["drugs"] = normalized
         return data
 
-    @classmethod
-    def montar_contexto_medicamentos(cls) -> str:
+    def montar_contexto_medicamentos(self) -> str:
         linhas = []
-        for drug in cls.drugs:
+        for drug in self.drugs:
             linha = f"- {drug.name}"
             if drug.via:
                 linha += f" (via: {drug.via})"
