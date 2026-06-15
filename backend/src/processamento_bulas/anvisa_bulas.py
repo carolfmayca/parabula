@@ -15,9 +15,10 @@ HEADERS = {
     "Referer": "https://consultas.anvisa.gov.br/",
 }
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-PASTA_PDF = PROJECT_ROOT / "bulas_pdf"
-PASTA_JSON = PROJECT_ROOT / "bulas_json"
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+DATA_DIR = PROJECT_ROOT / "data"
+PASTA_PDF = DATA_DIR / "bulas_pdf"
+PASTA_JSON = DATA_DIR / "bulas_json"
 RETRIES = 3
 RETRY_DELAY_SECONDS = 5
 

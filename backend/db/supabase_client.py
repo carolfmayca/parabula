@@ -31,8 +31,8 @@ load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
-BULAS_AGRUPADAS = Path("bulas_json/bulas_agrupadas.json")
-RELATORIO_BULAS = Path("bulas_pdf/relatorio_bulas.json")
+BULAS_AGRUPADAS = Path("data/bulas_json/bulas_agrupadas.json")
+RELATORIO_BULAS = Path("data/bulas_pdf/relatorio_bulas.json")
 
 
 def get_client() -> Client:
@@ -448,7 +448,7 @@ def carregar_bulas_json(client: Client, caminho: Path = BULAS_AGRUPADAS):
             aliases_inseridos += 1
 
         # Inserir bula
-        pdf_path = f"bulas_pdf/bula_profissional_{nome}.pdf"
+        pdf_path = f"data/bulas_pdf/bula_profissional_{nome}.pdf"
         bula = inserir_bula(client, med_id, conteudo, pdf_path)
 
         status = bula.get("_status", "já existia" if bula.get("id") else "adicionado")

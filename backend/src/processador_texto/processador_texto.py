@@ -5,7 +5,12 @@ from typing import List
 
 
 def get_interacoes(i: str) -> str:
-    json_path = Path(__file__).parent.parent.parent / "bulas_json" / f"bula_{i.capitalize()}.json"
+    json_path = (
+        Path(__file__).resolve().parents[3]
+        / "data"
+        / "bulas_json"
+        / f"bula_{i.capitalize()}.json"
+    )
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
         interacoes = data.get("INTERAÇÕES MEDICAMENTOSAS", "")
@@ -19,7 +24,12 @@ def get_interacoes(i: str) -> str:
 
 
 def get_advertenciasEprecaucoes(i: str) -> str:
-    json_path = Path(__file__).parent.parent.parent / "bulas_json" / f"bula_{i.capitalize()}.json"
+    json_path = (
+        Path(__file__).resolve().parents[3]
+        / "data"
+        / "bulas_json"
+        / f"bula_{i.capitalize()}.json"
+    )
     with open(json_path, "r", encoding="utf-8") as f:
         data = json.load(f)
         cabecalho = data.get("CABECALHO")

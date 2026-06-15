@@ -27,12 +27,12 @@ def main():
     parser.add_argument(
         "--pular-coleta",
         action="store_true",
-        help="Usa os PDFs ja existentes em bulas_pdf/.",
+        help="Usa os PDFs ja existentes em data/bulas_pdf/.",
     )
     parser.add_argument(
         "--pular-conversao",
         action="store_true",
-        help="Usa o JSON agrupado ja existente em bulas_json/.",
+        help="Usa o JSON agrupado ja existente em data/bulas_json/.",
     )
     parser.add_argument(
         "--pular-carga",
