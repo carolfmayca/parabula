@@ -652,6 +652,30 @@ textarea{
     font-weight: 600;
 }
 
+.med-tag.ignored {
+    background: #fff4e5;
+    color: #8a4f00;
+}
+
+.ignored-drugs-alert {
+    background: #fffaf0;
+    border: 1px solid #f4d49b;
+    border-radius: 14px;
+    padding: 18px 22px;
+}
+
+.ignored-drugs-alert h3 {
+    color: #7a4700;
+    font-size: 20px;
+    margin-bottom: 6px;
+}
+
+.ignored-drugs-alert p {
+    color: #7a4700;
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
+
 .details-header {
     display: flex;
     align-items: center;

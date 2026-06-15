@@ -94,6 +94,18 @@
         </article>
     </section>
 
+    {{#if apiResponse.ignored_drugs.length}}
+    <section class="ignored-drugs-alert">
+        <h3>Medicamentos não analisados</h3>
+        <p>Não foi possível encontrar bula para estes medicamentos, então eles ficaram fora desta análise.</p>
+        <div class="med-tag-list">
+            {{#each apiResponse.ignored_drugs}}
+            <span class="med-tag ignored">{{capitalizeFirst this.drug}}</span>
+            {{/each}}
+        </div>
+    </section>
+    {{/if}}
+
     <section class="details-section">
         <header class="details-header">
             <h3>Interações Medicamentosas</h3>
