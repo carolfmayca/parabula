@@ -233,7 +233,7 @@ def check_interactions(data: DrugRequest):
             client,
             prompt_riscos_clinicos(
                 texto_riscos,
-                perfil_paciente_str,
+                perfil_paciente,
                 contexto_medicamentos_str,
             ),
         )
@@ -280,7 +280,7 @@ def check_interactions(data: DrugRequest):
             client,
             prompt_riscos_clinicos(
                 texto_riscos,
-                perfil_paciente_str,
+                perfil_paciente,
                 contexto_medicamentos_str,
             ),
         )
