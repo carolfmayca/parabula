@@ -66,6 +66,7 @@ POST /drug-interactions/check
 ```json
 {
   "success": true,
+  "analysis_log_id": "2a2fc2a2-8f0d-4e4a-a76f-7314e28f5e2b",
   "drugs": ["ibuprofeno", "losartana"],
   "ignored_drugs": [
     {
@@ -86,6 +87,138 @@ POST /drug-interactions/check
     "severity": "low",
     "items": []
   }
+}
+```
+
+## Logs de análise
+
+Cada análise concluída salva um registro em `analise_logs` e retorna o ID no campo
+`analysis_log_id`.
+
+O mesmo registro também é salvo localmente em `backend/logs/analise_logs.jsonl`,
+com um JSON por linha.
+
+O log guarda:
+
+- medicamentos recebidos, incluindo `name`, `via` e o campo opcional `dose`;
+- perfil do paciente;
+- medicamentos considerados e ignorados;
+- bulas usadas para montar o contexto da resposta;
+- prompts chamados (`interacoes_medicamentosas` e/ou `riscos_clinicos`);
+- JSON retornado por cada prompt;
+- JSON final retornado pela API;
+- timestamps de recebimento, prompts e conclusão.
+
+As informações de dose e via ficam no próprio `medication_input`, junto com o
+medicamento recebido.
+
+No banco, as bulas usadas também ficam na tabela `analise_log_bula`, ligada por
+chave estrangeira a `analise_logs.id` e `bula_medicamento.id`.
+
+Exemplo de registro:
+
+```json
+{
+  "id": "2a2fc2a2-8f0d-4e4a-a76f-7314e28f5e2b",
+  "endpoint": "/drug-interactions/check",
+  "status": "success",
+  "request_received_at": "2026-06-19T14:20:10.123456+00:00",
+  "completed_at": "2026-06-19T14:20:18.456789+00:00",
+  "medication_input": [
+    {
+      "name": "dipirona",
+      "via": "intravenosa",
+      "dose": "100ml"
+    },
+    {
+      "name": "ibuprofeno",
+      "via": "oral",
+      "dose": "400mg"
+    }
+  ],
+  "patient_input": {
+    "age": 42,
+    "biological_sex": "female",
+    "is_pregnant": false,
+    "comorbidities": ["hipertensão"]
+  },
+  "drugs_considered": ["dipirona", "ibuprofeno"],
+  "ignored_drugs": [],
+  "bulas_usadas": [
+    {
+      "bula_medicamento_id": 123,
+      "medicamento_id": 45,
+      "principio_ativo": "dipirona",
+      "drug_requested": "dipirona"
+    },
+    {
+      "bula_medicamento_id": 456,
+      "medicamento_id": 78,
+      "principio_ativo": "ibuprofeno",
+      "drug_requested": "ibuprofeno"
+    }
+  ],
+  "prompt_calls": [
+    {
+      "name": "interacoes_medicamentosas",
+      "prompt": "...",
+      "started_at": "2026-06-19T14:20:12.456789+00:00",
+      "ended_at": "2026-06-19T14:20:15.567890+00:00",
+      "response_json": {
+        "summary": {
+          "interactions_found": false,
+          "severity": "low",
+          "description": "Nenhuma interação relevante encontrada."
+        },
+        "details": []
+      },
+      "error": null
+    },
+    {
+      "name": "riscos_clinicos",
+      "prompt": "...",
+      "started_at": "2026-06-19T14:20:15.678901+00:00",
+      "ended_at": "2026-06-19T14:20:18.345678+00:00",
+      "response_json": {
+        "risks_found": false,
+        "severity": "low",
+        "items": []
+      },
+      "error": null
+    }
+  ],
+  "response_json": {
+    "success": true,
+    "analysis_log_id": "2a2fc2a2-8f0d-4e4a-a76f-7314e28f5e2b",
+    "drugs": [
+      {
+        "name": "dipirona",
+        "via": "intravenosa",
+        "dose": "100ml"
+      },
+      {
+        "name": "ibuprofeno",
+        "via": "oral",
+        "dose": "400mg"
+      }
+    ],
+    "drugs_considered": ["dipirona", "ibuprofeno"],
+    "ignored_drugs": [],
+    "interactions": {
+      "summary": {
+        "interactions_found": false,
+        "severity": "low",
+        "description": "Nenhuma interação relevante encontrada."
+      },
+      "details": []
+    },
+    "clinical_risks": {
+      "risks_found": false,
+      "severity": "low",
+      "items": []
+    }
+  },
+  "error_json": null
 }
 ```
 
@@ -114,4 +247,3 @@ Se estiver dentro de `backend/`, use:
 ```bash
 python -m uvicorn src.api.api:app --reload --host 0.0.0.0 --port 8000
 ```
-

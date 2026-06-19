@@ -111,3 +111,55 @@ CREATE INDEX idx_bula_atualizacao_ultima_verificacao
 
 CREATE INDEX idx_bula_atualizacao_status
     ON bula_atualizacao (status_verificacao);
+
+
+-- =============================================================================
+-- analise_logs
+-- Auditoria das análises feitas pela API.
+-- Guarda entrada, prompts chamados, JSON retornado e timestamps.
+-- =============================================================================
+CREATE TABLE analise_logs (
+    id                          UUID PRIMARY KEY,
+    endpoint                    TEXT NOT NULL,
+    status                      TEXT NOT NULL DEFAULT 'success'
+        CHECK (status IN ('success', 'error')),
+
+    request_received_at         TIMESTAMPTZ NOT NULL,
+    completed_at                TIMESTAMPTZ,
+    created_at                  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    medication_input            JSONB NOT NULL,
+    patient_input               JSONB NOT NULL,
+    drugs_considered            JSONB NOT NULL DEFAULT '[]'::JSONB,
+    ignored_drugs               JSONB NOT NULL DEFAULT '[]'::JSONB,
+
+    prompt_calls                JSONB NOT NULL DEFAULT '[]'::JSONB,
+    response_json               JSONB,
+    error_json                  JSONB
+);
+
+CREATE INDEX idx_analise_logs_request_received_at
+    ON analise_logs (request_received_at);
+
+CREATE INDEX idx_analise_logs_status
+    ON analise_logs (status);
+
+
+-- Bulas efetivamente usadas para montar o contexto da análise.
+CREATE TABLE analise_log_bula (
+    id                      SERIAL PRIMARY KEY,
+    analise_log_id          UUID NOT NULL REFERENCES analise_logs (id) ON DELETE CASCADE,
+    bula_medicamento_id     INTEGER NOT NULL REFERENCES bula_medicamento (id),
+    medicamento_id          INTEGER REFERENCES medicamento (id),
+    principio_ativo         TEXT,
+    drug_requested          TEXT,
+    created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    UNIQUE (analise_log_id, bula_medicamento_id)
+);
+
+CREATE INDEX idx_analise_log_bula_log_id
+    ON analise_log_bula (analise_log_id);
+
+CREATE INDEX idx_analise_log_bula_bula_id
+    ON analise_log_bula (bula_medicamento_id);

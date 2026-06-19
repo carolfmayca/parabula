@@ -150,6 +150,7 @@ def montar_bulas_texto(
     drugs_considerados = []
     drogas_ignoradas = []
     importacoes = []
+    bulas_usadas = []
 
     for drug in drugs:
         medicamentos_encontrados, resultado_importacao = buscar_ou_importar_medicamento(
@@ -180,6 +181,14 @@ def montar_bulas_texto(
         if not bula_registro:
             conteudo_bula = "Informações de bula indisponíveis no banco de dados."
         else:
+            bulas_usadas.append(
+                {
+                    "bula_medicamento_id": bula_registro["id"],
+                    "medicamento_id": med_id,
+                    "principio_ativo": nome_oficial,
+                    "drug_requested": drug,
+                }
+            )
             conteudo_bula = _conteudo_dos_campos(
                 bula_registro["conteudo_json"],
                 campos,
@@ -200,6 +209,7 @@ def montar_bulas_texto(
             "drugs_considerados": drugs_considerados,
             "ignored_drugs": drogas_ignoradas,
             "importacoes": importacoes,
+            "bulas_usadas": bulas_usadas,
         }
 
     return bulas_texto
