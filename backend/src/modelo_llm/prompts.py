@@ -71,9 +71,10 @@ def prompt_riscos_clinicos(
     Medicamentos:
     {contexto_medicamentos_str}
 
-    Avalie três categorias de risco clínico:
+    Avalie categorias de risco clínico:
     1. Contraindicações ou cautelas por comorbidade (ex: AINE em paciente hipertenso)
     2. Riscos por faixa etária (ex: sedativos em idosos, doses em crianças)
+    3. Dosagem de acordo com as informações do paciente (idade, peso) 
     3. Advertencias específicas da via de administração
     4. Contraindicações ou cautelas na gravidez (apenas se is_pregnant for true)
 
