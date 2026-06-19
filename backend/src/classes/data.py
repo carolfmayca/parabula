@@ -3,12 +3,35 @@ from typing import Any, List, Literal, Optional
 from pydantic import BaseModel, field_validator, model_validator
 
 
-
 class Patient(BaseModel):
     age: Optional[int] = None
+    weight: Optional[tuple[int, int]] = None
     biological_sex: Optional[Literal["female", "male", "other"]] = None
     is_pregnant: Optional[bool] = None
     comorbidities: Optional[List[str]] = None
+
+    def toString(self):
+        perfil_pat = []
+        if self.age is not None:
+            perfil_pat.append(f"- Idade: {self.age} anos")
+
+        if self.weight:
+            perfil_pat.append(
+                f"- Peso: {self.weight[0]} kg e {self.weight[1]}g"
+            )
+
+        if self.biological_sex:
+            perfil_pat.append(f"- Sexo biológico: {self.biological_sex}")
+
+        if self.is_pregnant is not None:
+            perfil_pat.append(f"- Grávida: {self.is_pregnant}")
+
+        if self.comorbidities:
+            perfil_pat.append(
+                f"- Comorbidades: {', '.join(self.comorbidities)}"
+            )
+
+        return "\n".join(perfil_pat)
 
 
 class Drug(BaseModel):
@@ -36,12 +59,26 @@ class Drug(BaseModel):
         normalized = value.strip().lower()
         return normalized or None
 
+    @field_validator("dose")
+    @classmethod
+    def validate_dose(cls, value: Optional[Any]):
+        if value is None:
+            return None
+
+        import re
+
+        normalized = str(value).strip().lower()
+        if not re.fullmatch(r"\d+(?:[.,]\d+)?\s?(ml|mg|u)", normalized):
+            raise ValueError(
+                "dose deve estar no formato numero + unidade, ex: 10mg, 5 ml, 2u"
+            )
+        return normalized
+
     def model_dump_for_log(self) -> dict:
         data = self.model_dump(exclude_none=True)
         if data.get("doses") == data.get("dose"):
             data.pop("doses", None)
         return data
-
 
 
 class DrugRequest(BaseModel):
@@ -68,9 +105,17 @@ class DrugRequest(BaseModel):
         data["drugs"] = normalized
         return data
 
-    def montar_contexto_medicamentos(self) -> str:
+    def montar_contexto_medicamentos(
+        self,
+        valid_drugs: Optional[List[str]] = None,
+    ) -> Optional[str]:
+        drugs_names = [name.lower() for name in valid_drugs] if valid_drugs else []
+
         linhas = []
         for drug in self.drugs:
+            if drugs_names and drug.name not in drugs_names:
+                continue
+
             linha = f"- {drug.name}"
             details = []
             if drug.via:
@@ -80,4 +125,8 @@ class DrugRequest(BaseModel):
             if details:
                 linha += f" ({', '.join(details)})"
             linhas.append(linha)
+
+        if not linhas:
+            return None
+
         return "\n".join(linhas)
