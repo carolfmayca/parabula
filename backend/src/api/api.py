@@ -12,7 +12,7 @@ try:
     from backend.src.modelo_llm.prompts import prompt_interacoes, prompt_riscos_clinicos
 except ModuleNotFoundError:
     from db.supabase_client import get_client
-    from src.classes.data import DrugRequest
+    from src.classes.data import DrugRequest, Patient
     from src.modelo_llm.open_router import chamar_modelo
     from src.processador_texto.processador_texto import montar_bulas_texto
     from src.modelo_llm.prompts import prompt_interacoes, prompt_riscos_clinicos
@@ -111,7 +111,7 @@ def check_interactions(data: DrugRequest):
     drugs = data.drugs
     drug_names = [drug.name for drug in drugs]
     num_drugs = len(drugs)
-    patient = data.patient
+    patient = Patient.model_validate(data.patient)
 
     logger.info("Medicamentos recebidos: %s", drug_names)
 
@@ -127,24 +127,8 @@ def check_interactions(data: DrugRequest):
                 ),
             },
         )
-
-    perfil_paciente = []
-
-    if patient.age is not None:
-        perfil_paciente.append(f"- Idade: {patient.age} anos")
-
-    if patient.biological_sex is not None:
-        perfil_paciente.append(f"- Sexo biológico: {patient.biological_sex}")
-
-    if patient.is_pregnant is not None:
-        perfil_paciente.append(f"- Grávida: {patient.is_pregnant}")
-
-    if patient.comorbidities:
-        perfil_paciente.append(
-            f"- Comorbidades: {', '.join(patient.comorbidities)}"
-        )
-
-    perfil_paciente_str = "\n".join(perfil_paciente)
+    
+    perfil_paciente = patient.toString()
     has_patient = bool(perfil_paciente)
 
     # VALIDAÇÃO 1: Medicamentos duplicados

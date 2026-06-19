@@ -12,6 +12,30 @@ class Patient(BaseModel):
     is_pregnant: Optional[bool] = None
     comorbidities: Optional[List[str]] = None
 
+    def toString(self) :
+        perfil_pat = []
+        if self.age is not None:
+            perfil_pat.append(f"- Idade: {self.age} anos")
+
+        if self.weight:
+            perfil_pat.append(
+                f"- Peso: {self.weight[0]} kg e {self.weight[1]}g"
+            )
+
+        if self.biological_sex:
+            perfil_pat.append(f"- Sexo biológico: {self.biological_sex}")
+
+        if self.is_pregnant is not None:
+            perfil_pat.append(f"- Grávida: {self.is_pregnant}")
+
+        if self.comorbidities:
+            perfil_pat.append(
+                f"- Comorbidades: {', '.join(self.comorbidities)}"
+            )
+
+        perfil_paciente_str = "\n".join(perfil_pat)
+        return perfil_paciente_str
+
 class Drug(BaseModel):
     name: str
     via: Optional[str] = None
@@ -69,7 +93,7 @@ class DrugRequest(BaseModel):
 
     def montar_contexto_medicamentos(self, valid_drugs:List[str]) -> str:
         
-        drugs_names = [name.lower() for name in valid_drugs]
+        drugs_names = [name.lower() for name in valid_drugs] if valid_drugs else []
         if not drugs_names:
                 return None
 
