@@ -1,17 +1,34 @@
 import logging
 import os
+from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from openrouter import OpenRouter
 
 try:
     from backend.db.supabase_client import get_client
+    from backend.src.api.audit_logs import (
+        agora_iso,
+        novo_log_id,
+        registrar_prompt,
+        salvar_bulas_usadas,
+        salvar_log_analise,
+        salvar_log_analise_local,
+    )
     from backend.src.classes.data import DrugRequest
     from backend.src.modelo_llm.open_router import chamar_modelo
     from backend.src.processador_texto.processador_texto import montar_bulas_texto
     from backend.src.modelo_llm.prompts import prompt_interacoes, prompt_riscos_clinicos
 except ModuleNotFoundError:
     from db.supabase_client import get_client
+    from src.api.audit_logs import (
+        agora_iso,
+        novo_log_id,
+        registrar_prompt,
+        salvar_bulas_usadas,
+        salvar_log_analise,
+        salvar_log_analise_local,
+    )
     from src.classes.data import DrugRequest
     from src.modelo_llm.open_router import chamar_modelo
     from src.processador_texto.processador_texto import montar_bulas_texto
@@ -94,8 +111,13 @@ def montar_contexto_medicamentos_considerados(
             continue
 
         linha = f"- {drug.name}"
+        detalhes = []
         if drug.via:
-            linha += f" (via: {drug.via})"
+            detalhes.append(f"via: {drug.via}")
+        if drug.dose is not None:
+            detalhes.append(f"dose: {drug.dose}")
+        if detalhes:
+            linha += f" ({', '.join(detalhes)})"
         linhas.append(linha)
 
     if linhas:
@@ -104,9 +126,95 @@ def montar_contexto_medicamentos_considerados(
     return "\n".join(f"- {drug}" for drug in drugs_considerados)
 
 
+def chamar_prompt_logado(
+    client: OpenRouter,
+    prompt_calls: list[dict[str, Any]],
+    *,
+    name: str,
+    prompt: str,
+) -> dict:
+    started_at = agora_iso()
+    try:
+        response_json = chamar_modelo(client, prompt)
+    except Exception as exc:
+        registrar_prompt(
+            prompt_calls,
+            name=name,
+            prompt=prompt,
+            started_at=started_at,
+            ended_at=agora_iso(),
+            error={
+                "type": exc.__class__.__name__,
+                "message": str(exc),
+            },
+        )
+        raise
+
+    registrar_prompt(
+        prompt_calls,
+        name=name,
+        prompt=prompt,
+        started_at=started_at,
+        ended_at=agora_iso(),
+        response_json=response_json,
+    )
+    return response_json
+
+
+def salvar_log_sem_bloquear(
+    supabase_client,
+    *,
+    log_id: str,
+    request_received_at: str,
+    data: DrugRequest,
+    drugs_considerados: list[str],
+    ignored_drugs: list[dict],
+    bulas_usadas: list[dict[str, Any]],
+    prompt_calls: list[dict[str, Any]],
+    response_json: dict | None,
+    error_json: dict | None = None,
+) -> None:
+    payload = {
+        "id": log_id,
+        "endpoint": "/drug-interactions/check",
+        "status": "error" if error_json else "success",
+        "request_received_at": request_received_at,
+        "completed_at": agora_iso(),
+        "medication_input": [
+            drug.model_dump_for_log() for drug in data.drugs
+        ],
+        "patient_input": data.patient.model_dump(),
+        "drugs_considered": drugs_considerados,
+        "ignored_drugs": ignored_drugs,
+        "bulas_usadas": bulas_usadas,
+        "prompt_calls": prompt_calls,
+        "response_json": response_json,
+        "error_json": error_json,
+    }
+    payload_banco = {
+        chave: valor
+        for chave, valor in payload.items()
+        if chave != "bulas_usadas"
+    }
+
+    try:
+        salvar_log_analise_local(payload)
+    except Exception as exc:
+        logger.warning("Falha ao salvar log local de análise %s: %s", log_id, exc)
+
+    try:
+        salvar_log_analise(supabase_client, payload_banco)
+        salvar_bulas_usadas(supabase_client, log_id, bulas_usadas)
+    except Exception as exc:
+        logger.warning("Falha ao salvar log no banco de análise %s: %s", log_id, exc)
+
+
 @app.post("/drug-interactions/check")
 def check_interactions(data: DrugRequest):
     logger.info("Rota /drug-interactions/check chamada")
+    request_received_at = agora_iso()
+    log_id = novo_log_id()
+    prompt_calls = []
 
     drugs = data.drugs
     drug_names = [drug.name for drug in drugs]
@@ -199,6 +307,7 @@ def check_interactions(data: DrugRequest):
     )
     texto_riscos = resultado_riscos_bulas["bulas_texto"]
     ignored_drugs = resultado_riscos_bulas["ignored_drugs"]
+    bulas_usadas = resultado_riscos_bulas["bulas_usadas"]
     drugs_considerados = deduplicar_nomes(resultado_riscos_bulas["drugs_considerados"])
 
     if not drugs_considerados:
@@ -245,19 +354,23 @@ def check_interactions(data: DrugRequest):
 
     # Cenario 2: 1 medicamento disponível e dados do paciente
     if num_drugs_considerados == 1 and has_patient:
-        resultado_riscos = chamar_modelo(
+        prompt_riscos = prompt_riscos_clinicos(
+            texto_riscos,
+            perfil_paciente_str,
+            contexto_medicamentos_str,
+        )
+        resultado_riscos = chamar_prompt_logado(
             client,
-            prompt_riscos_clinicos(
-                texto_riscos,
-                perfil_paciente_str,
-                contexto_medicamentos_str,
-            ),
+            prompt_calls,
+            name="riscos_clinicos",
+            prompt=prompt_riscos,
         )
         resultado_riscos = ajustar_riscos_saida(resultado_riscos)
 
-        return {
+        response_json = {
             "success": True,
-            "drugs": [drug.model_dump() for drug in drugs],
+            "analysis_log_id": log_id,
+            "drugs": [drug.model_dump_for_log() for drug in drugs],
             "drugs_considered": drugs_considerados,
             "ignored_drugs": ignored_drugs,
             "clinical_risks": {
@@ -266,18 +379,34 @@ def check_interactions(data: DrugRequest):
                 "items": resultado_riscos["items"],
             },
         }
+        salvar_log_sem_bloquear(
+            supabase_client,
+            log_id=log_id,
+            request_received_at=request_received_at,
+            data=data,
+            drugs_considerados=drugs_considerados,
+            ignored_drugs=ignored_drugs,
+            bulas_usadas=bulas_usadas,
+            prompt_calls=prompt_calls,
+            response_json=response_json,
+        )
+        return response_json
 
     # Cenario 3: 2 ou + medicamentos disponíveis sem dados do paciente
     if num_drugs_considerados >= 2 and not has_patient:
-        resultado_interacoes = chamar_modelo(
+        prompt_interacao = prompt_interacoes(texto_interacoes, contexto_medicamentos_str)
+        resultado_interacoes = chamar_prompt_logado(
             client,
-            prompt_interacoes(texto_interacoes, contexto_medicamentos_str),
+            prompt_calls,
+            name="interacoes_medicamentosas",
+            prompt=prompt_interacao,
         )
         resultado_interacoes = ajustar_interacoes_saida(resultado_interacoes)
 
-        return {
+        response_json = {
             "success": True,
-            "drugs": [drug.model_dump() for drug in drugs],
+            "analysis_log_id": log_id,
+            "drugs": [drug.model_dump_for_log() for drug in drugs],
             "drugs_considered": drugs_considerados,
             "ignored_drugs": ignored_drugs,
             "interactions": {
@@ -285,27 +414,46 @@ def check_interactions(data: DrugRequest):
                 "details": resultado_interacoes["details"],
             },
         }
+        salvar_log_sem_bloquear(
+            supabase_client,
+            log_id=log_id,
+            request_received_at=request_received_at,
+            data=data,
+            drugs_considerados=drugs_considerados,
+            ignored_drugs=ignored_drugs,
+            bulas_usadas=bulas_usadas,
+            prompt_calls=prompt_calls,
+            response_json=response_json,
+        )
+        return response_json
 
     # Cenario 4: 2 ou + medicamentos disponíveis com dados do paciente
     if num_drugs_considerados >= 2 and has_patient:
-        resultado_interacoes = chamar_modelo(
-            client,
-            prompt_interacoes(texto_interacoes, contexto_medicamentos_str),
+        prompt_interacao = prompt_interacoes(texto_interacoes, contexto_medicamentos_str)
+        prompt_riscos = prompt_riscos_clinicos(
+            texto_riscos,
+            perfil_paciente_str,
+            contexto_medicamentos_str,
         )
-        resultado_riscos = chamar_modelo(
+        resultado_interacoes = chamar_prompt_logado(
             client,
-            prompt_riscos_clinicos(
-                texto_riscos,
-                perfil_paciente_str,
-                contexto_medicamentos_str,
-            ),
+            prompt_calls,
+            name="interacoes_medicamentosas",
+            prompt=prompt_interacao,
+        )
+        resultado_riscos = chamar_prompt_logado(
+            client,
+            prompt_calls,
+            name="riscos_clinicos",
+            prompt=prompt_riscos,
         )
         resultado_interacoes = ajustar_interacoes_saida(resultado_interacoes)
         resultado_riscos = ajustar_riscos_saida(resultado_riscos)
 
-        return {
+        response_json = {
             "success": True,
-            "drugs": [drug.model_dump() for drug in drugs],
+            "analysis_log_id": log_id,
+            "drugs": [drug.model_dump_for_log() for drug in drugs],
             "drugs_considered": drugs_considerados,
             "ignored_drugs": ignored_drugs,
             "interactions": {
@@ -318,3 +466,15 @@ def check_interactions(data: DrugRequest):
                 "items": resultado_riscos["items"],
             },
         }
+        salvar_log_sem_bloquear(
+            supabase_client,
+            log_id=log_id,
+            request_received_at=request_received_at,
+            data=data,
+            drugs_considerados=drugs_considerados,
+            ignored_drugs=ignored_drugs,
+            bulas_usadas=bulas_usadas,
+            prompt_calls=prompt_calls,
+            response_json=response_json,
+        )
+        return response_json

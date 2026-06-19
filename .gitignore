@@ -4,3 +4,4 @@ __pycache__/
 .venv/
 data/DB-Anvisa2.csv.zip
 data/bulas_pdf/*
+backend/logs/
