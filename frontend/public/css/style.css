@@ -14,48 +14,53 @@ body{
 /* NAVBAR */
 
 .navbar{
-    height:90px;
+    height:68px;
     display:flex;
     justify-content:space-between;
     align-items:center;
-    padding:0 40px;
+    padding:0 60px;
     background:white;
-    border-bottom:1px solid #ddd;
+    border-bottom:1px solid #e4e8f0;
 }
 
 .logo {
     display: flex;
     align-items: center;
+    text-decoration: none;
 }
 
 .logo img{
-    height:70px;
-    width: 87px;
+    height:36px;
+    width:auto;
 }
 .logo span{
-    font-size:32px;
-    color:#14453E;
-    margin-left:5px;
-    font-family: 'Poppins', sans-serif;
+    font-size:22px;
+    color:#004d40;
+    margin-left:0;
+    font-family: 'Poppins';
 }
 
 nav{
     display:flex;
-    gap:50px;
+    gap:36px;
 }
 
 nav a{
     text-decoration:none;
-    color:black;
-    font-weight:600;
+    color:#333;
+    font-weight:500;
+    font-size:15px;
 }
 
 .btn-top{
-    background:#07a37b;
-    color:white;
-    border:none;
-    border-radius:25px;
-    padding:12px 25px;
+    background:transparent;
+    color:#004d40;
+    border:1.5px solid #004d40;
+    border-radius:8px;
+    padding:9px 22px;
+    font-weight:600;
+    font-size:14px;
+    text-decoration:none;
     cursor:pointer;
 }
 
@@ -694,9 +699,13 @@ textarea{
     margin-bottom: 14px;
 }
 
+:root {
+    --results-side-col: minmax(260px, 1.3fr);
+}
+
 .interaction-row {
     display: grid;
-    grid-template-columns: 1.3fr 2fr auto;
+    grid-template-columns: var(--results-side-col) 2fr auto;
     gap: 16px;
     border: 1px solid #e7ebf4;
     border-radius: 12px;
@@ -808,7 +817,7 @@ textarea{
 
 .risk-row {
     display: grid;
-    grid-template-columns: 1fr 2fr auto;
+    grid-template-columns: var(--results-side-col) 2fr auto;
     gap: 16px;
     border: 1px solid #e7ebf4;
     border-radius: 12px;

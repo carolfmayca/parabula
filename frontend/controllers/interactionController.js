@@ -29,6 +29,14 @@ function parseMedicamentos(rawMedicamentos) {
     });
 }
 
+exports.landing = (req, res) => {
+    res.render("landing");
+};
+
+exports.team = (req, res) => {
+    res.render("team");
+};
+
 exports.index = (req, res) => {
     res.render("interaction", {
         medicamentos: []
