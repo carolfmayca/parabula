@@ -33,6 +33,7 @@ class Patient(BaseModel):
 
         return "\n".join(perfil_pat)
 
+
 class Drug(BaseModel):
     name: str
     via: Optional[str] = None
