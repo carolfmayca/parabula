@@ -87,6 +87,7 @@ def prompt_riscos_clinicos(
       "items": [
         {{
           "drug": "nome do medicamento",
+          "risk_factor": "fator do paciente que motivou o risco (ex: asma, idade avançada, gravidez)"
           "severity": "high",
           "description": "descrição detalhada do risco para este paciente"
         }}
@@ -108,6 +109,7 @@ def prompt_riscos_clinicos(
     - Se idade não foi informada, não avalie riscos relacionados à faixa etária.
     - Se sexo biológico não foi informado, não considere riscos específicos de sexo.
     - Se comorbidades não foram informadas, não considere comorbidades inexistentes.
+    - O campo risk_factor deve indicar de forma curta e objetiva qual dado do paciente motivou aquele risco (ex: "Asma", "Idade avançada (75 anos)", "Gravidez", "Hipertensão"). Não repita o nome do medicamento nesse campo.
 
     Informações das bulas:
     {bulas_texto}
