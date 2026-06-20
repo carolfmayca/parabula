@@ -37,11 +37,15 @@
                     {{#each medicamentos}}
                     <div class="medicine-item"
                         data-name="{{#if this.name}}{{this.name}}{{else}}{{this}}{{/if}}"
-                        data-via="{{this.via}}">
+                        data-via="{{this.via}}"
+                        data-dose="{{this.dose}}">
                         <div class="medicine-item-content">
                             <span class="medicine-item-name">{{#if this.name}}{{capitalizeFirst this.name}}{{else}}{{capitalizeFirst this}}{{/if}}</span>
                             {{#if this.via}}
                             <span class="medicine-item-via">Via: {{ptVia this.via}}</span>
+                            {{/if}}
+                            {{#if this.dose}}
+                            <span class="medicine-item-dose">Dosagem: {{this.dose}}</span>
                             {{/if}}
                         </div>
                         <button type="button" class="remove-medicine" data-index="{{@index}}">×</button>
@@ -51,18 +55,21 @@
 
                 <div class="add-medicine-container">
                     <input type="text" id="novo-medicamento" placeholder="Digite o nome do medicamento" class="medicine-input">
-                    <select id="medicamento-via" class="medicine-via-select is-placeholder">
-                        <option value="">Via (Opcional)</option>
-                        <option value="oral">Oral</option>
-                        <option value="intravenosa">Intravenosa (IV)</option>
-                        <option value="intramuscular">Intramuscular (IM)</option>
-                        <option value="subcutanea">Subcutânea (SC)</option>
-                        <option value="topica">Tópica</option>
-                        <option value="inalatoria">Inalatória</option>
-                        <option value="oftalmica">Oftálmica</option>
-                        <option value="nasal">Nasal</option>
-                        <option value="retal">Retal</option>
-                    </select>
+                    <div class="medicine-via-dose-row">
+                        <select id="medicamento-via" class="medicine-via-select is-placeholder">
+                            <option value="">Via (Opcional)</option>
+                            <option value="oral">Oral</option>
+                            <option value="intravenosa">Intravenosa (IV)</option>
+                            <option value="intramuscular">Intramuscular (IM)</option>
+                            <option value="subcutanea">Subcutânea (SC)</option>
+                            <option value="topica">Tópica</option>
+                            <option value="inalatoria">Inalatória</option>
+                            <option value="oftalmica">Oftálmica</option>
+                            <option value="nasal">Nasal</option>
+                            <option value="retal">Retal</option>
+                        </select>
+                        <input type="text" id="medicamento-dose" placeholder="Dosagem mg/ml/u (opcional)" class="medicine-input medicine-dose-input">
+                    </div>
                     <button type="button" class="add-btn" id="add-medicine-btn">
                         + Adicionar medicamento
                     </button>
@@ -81,12 +88,21 @@
                     Informe os dados clínicos relevantes do paciente.
                 </p>
 
-                <div class="field">
-                    <label>Idade</label>
+                <div class="field-row">
+                    <div class="field">
+                        <label>Idade</label>
+                        <div class="idade">
+                            <input type="number" id="idade" name="idade" min="0" max="150">
+                            <span>anos</span>
+                        </div>
+                    </div>
 
-                    <div class="idade">
-                        <input type="number" id="idade" name="idade" min="0" max="150">
-                        <span>anos</span>
+                    <div class="field">
+                        <label>Peso</label>
+                        <div class="peso">
+                            <input type="number" id="peso" name="peso" min="0" step="0.001" placeholder="0">
+                            <span>kg</span>
+                        </div>
                     </div>
                 </div>
 

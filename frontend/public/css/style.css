@@ -904,3 +904,45 @@ textarea{
         font-size: 16px;
     }
 }
+
+
+.field-row {
+    display: flex;
+    gap: 30px;
+}
+
+.peso {
+    display: flex;
+    width: 120px;
+}
+
+.peso input {
+    width: 100px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.peso span {
+    border: 1px solid #ccc;
+    padding: 8px;
+}
+
+.medicine-via-dose-row {
+    display: flex;
+    gap: 10px;
+}
+
+.medicine-via-dose-row .medicine-via-select {
+    flex: 1.4;
+}
+.medicine-via-dose-row .medicine-dose-input {
+    width: auto;
+    flex: 1;
+}
+
+.medicine-item-dose {
+    font-size: 14px;
+    color: #666;
+}

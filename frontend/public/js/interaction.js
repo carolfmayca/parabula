@@ -18,12 +18,13 @@ function getViaLabel(via) {
 
 function normalizeMedicamento(item) {
     if (typeof item === "string") {
-        return { name: item, via: null };
+        return { name: item, via: null, dose: null };
     }
 
     return {
         name: item.name,
-        via: item.via || null
+        via: item.via || null,
+        dose: item.dose || null
     };
 }
 
@@ -31,6 +32,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const addMedicineBtn = document.getElementById("add-medicine-btn");
     const novoMedicamentoInput = document.getElementById("novo-medicamento");
     const medicamentoViaSelect = document.getElementById("medicamento-via");
+    const medicamentoDoseInput = document.getElementById("medicamento-dose");
     const medicamentosList_element = document.getElementById("medicamentos-list");
     const formulario = document.querySelector("form");
 
@@ -49,13 +51,15 @@ document.addEventListener("DOMContentLoaded", function() {
 
         medicamentosList.push({
             name,
-            via: item.dataset.via || null
+            via: item.dataset.via || null,
+            dose: item.dataset.dose || null
         });
     });
 
     addMedicineBtn.addEventListener("click", function() {
         const medicName = novoMedicamentoInput.value.trim();
         const selectedVia = medicamentoViaSelect.value || null;
+        const dose = medicamentoDoseInput.value.trim() || null;
 
         if (!medicName) {
             alert("Digite o nome do medicamento");
@@ -64,11 +68,13 @@ document.addEventListener("DOMContentLoaded", function() {
 
         medicamentosList.push({
             name: medicName,
-            via: selectedVia
+            via: selectedVia,
+            dose: dose
         });
 
         novoMedicamentoInput.value = "";
         medicamentoViaSelect.value = "";
+        medicamentoDoseInput.value = "";
         updateViaSelectStyle();
         renderMedicamentos();
     });
@@ -136,7 +142,8 @@ document.addEventListener("DOMContentLoaded", function() {
             hidden.name = "medicamentos";
             hidden.value = JSON.stringify({
                 name: med.name,
-                via: med.via
+                via: med.via,
+                dose: med.dose
             });
             formulario.appendChild(hidden);
         });
@@ -155,11 +162,16 @@ document.addEventListener("DOMContentLoaded", function() {
             const viaHtml = normalized.via
                 ? `<span class="medicine-item-via">Via: ${getViaLabel(normalized.via)}</span>`
                 : "";
+            
+            const doseHtml = normalized.dose
+            ? `<span class="medicine-item-dose">Dosagem: ${normalized.dose}</span>`
+            : "";
 
             div.innerHTML = `
                 <div class="medicine-item-content">
                     <span class="medicine-item-name">${normalized.name}</span>
                     ${viaHtml}
+                    ${doseHtml}
                 </div>
                 <button type="button" class="remove-medicine" data-index="${index}">×</button>
             `;

@@ -64,7 +64,7 @@ class Drug(BaseModel):
         import re
         if not re.fullmatch(r"\d+(?:[.,]\d+)?\s?(ml|mg|u)", value.strip().lower()):
             raise ValueError("dose deve estar no formato numero + unidade, ex: 10mg, 5 ml, 2u")
-        return value.strip().lower
+        return value.strip().lower()
 
 
 class DrugRequest(BaseModel):
