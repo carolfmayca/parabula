@@ -271,6 +271,24 @@ def check_interactions(data: DrugRequest):
                 ),
             },
         )
+    
+    # VALIDAÇÃO 4: Para crianças com dosagem, é preciso informar peso
+    has_dosage = any(drug.dose is not None for drug in drugs)
+    if has_dosage and patient.age is not None:
+        # idade limite definida para criança
+        is_child = patient.age < 12
+
+        if is_child and patient.weight is None:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "CHILD_WEIGHT_REQUIRED",
+                    "message": (
+                        "Para pacientes pediátricos com dosagem informada, "
+                        "o peso é obrigatório."
+                    ),
+                },
+            )
 
     try:
         supabase_client = get_client()
