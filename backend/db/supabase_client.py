@@ -33,6 +33,9 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 BULAS_AGRUPADAS = Path("data/bulas_json/bulas_agrupadas.json")
 RELATORIO_BULAS = Path("data/bulas_pdf/relatorio_bulas.json")
+CONSULTAS_PAGINADAS_PERMITIDAS = {
+    ("bula_medicamento", "id,medicamento_id,vigente,pdf_path,fonte_url,created_at"),
+}
 
 
 def get_client() -> Client:
@@ -42,6 +45,16 @@ def get_client() -> Client:
             "SUPABASE_URL e SUPABASE_KEY devem estar definidos no arquivo .env"
         )
     return create_client(SUPABASE_URL, SUPABASE_KEY)
+
+
+def escapar_ilike(valor: str) -> str:
+    """Escapa curingas de LIKE para entrada de usuário."""
+    return (
+        valor
+        .replace("\\", "\\\\")
+        .replace("%", "\\%")
+        .replace("_", "\\_")
+    )
 
 
 # ============================================================================
@@ -55,7 +68,7 @@ def inserir_medicamento(client: Client, principio_ativo: str) -> dict:
     existente = (
         client.table("medicamento")
         .select("*")
-        .ilike("principio_ativo", principio_ativo)
+        .ilike("principio_ativo", escapar_ilike(principio_ativo))
         .execute()
     )
 
@@ -104,8 +117,18 @@ def registrar_atualizacao_bula(
     return resultado.data[0] if resultado.data else None
 
 
-def buscar_todos_registros(client: Client, tabela: str, campos: str = "*", tamanho_pagina: int = 1000):
+def buscar_todos_registros(
+    client: Client,
+    tabela: str,
+    campos: str,
+    tamanho_pagina: int = 1000,
+):
     """Busca todos os registros de uma tabela paginando a API do Supabase."""
+    if (tabela, campos) not in CONSULTAS_PAGINADAS_PERMITIDAS:
+        raise ValueError("Consulta paginada não permitida.")
+    if tamanho_pagina < 1 or tamanho_pagina > 1000:
+        raise ValueError("tamanho_pagina deve estar entre 1 e 1000.")
+
     todos = []
     inicio = 0
 
@@ -266,7 +289,7 @@ def inserir_alias(
     existente = (
         client.table("medicamento_alias")
         .select("*")
-        .ilike("alias", alias)
+        .ilike("alias", escapar_ilike(alias))
         .execute()
     )
 
@@ -295,12 +318,13 @@ def inserir_alias(
 def buscar_medicamento(client: Client, nome: str) -> list[dict]:
     """Busca medicamento por nome (princípio ativo ou alias)."""
     nome = nome.strip()
+    nome_ilike = escapar_ilike(nome)
 
     # Buscar por princípio ativo exato
     resultado_exato = (
         client.table("medicamento")
         .select("*")
-        .ilike("principio_ativo", nome)
+        .ilike("principio_ativo", nome_ilike)
         .execute()
     )
 
@@ -311,7 +335,7 @@ def buscar_medicamento(client: Client, nome: str) -> list[dict]:
     resultado_alias_exato = (
         client.table("medicamento_alias")
         .select("*, medicamento(*)")
-        .ilike("alias", nome)
+        .ilike("alias", nome_ilike)
         .execute()
     )
 
@@ -322,7 +346,7 @@ def buscar_medicamento(client: Client, nome: str) -> list[dict]:
     resultado = (
         client.table("medicamento")
         .select("*")
-        .ilike("principio_ativo", f"%{nome}%")
+        .ilike("principio_ativo", f"%{nome_ilike}%")
         .execute()
     )
 
@@ -333,7 +357,7 @@ def buscar_medicamento(client: Client, nome: str) -> list[dict]:
     resultado_alias = (
         client.table("medicamento_alias")
         .select("*, medicamento(*)")
-        .ilike("alias", f"%{nome}%")
+        .ilike("alias", f"%{nome_ilike}%")
         .execute()
     )
 

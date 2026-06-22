@@ -2,11 +2,16 @@ import logging
 import os
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from openrouter import OpenRouter
 
 try:
     from backend.db.supabase_client import get_client
+    from backend.src.api.auth import (
+        autenticar_requisicao,
+        criar_token_usuario,
+        validar_permissao_emissao_token,
+    )
     from backend.src.api.audit_logs import (
         agora_iso,
         novo_log_id,
@@ -21,6 +26,11 @@ try:
     from backend.src.modelo_llm.prompts import prompt_interacoes, prompt_riscos_clinicos
 except ModuleNotFoundError:
     from db.supabase_client import get_client
+    from src.api.auth import (
+        autenticar_requisicao,
+        criar_token_usuario,
+        validar_permissao_emissao_token,
+    )
     from src.api.audit_logs import (
         agora_iso,
         novo_log_id,
@@ -36,6 +46,35 @@ except ModuleNotFoundError:
 
 app = FastAPI()
 logger = logging.getLogger("uvicorn.error")
+
+
+def obter_supabase_client():
+    try:
+        return get_client()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "code": "SUPABASE_CONNECTION_ERROR",
+                "message": f"Falha ao conectar ao Supabase: {exc}",
+            },
+        )
+
+
+def obter_sessao_autenticada(
+    request: Request,
+    authorization: str | None = Header(default=None),
+) -> dict:
+    supabase_client = obter_supabase_client()
+    auth_context = autenticar_requisicao(
+        request,
+        supabase_client,
+        authorization,
+    )
+    return {
+        "client": supabase_client,
+        "auth": auth_context,
+    }
 
 
 def normalizar_severidade(valor: str | None) -> str:
@@ -165,6 +204,7 @@ def salvar_log_sem_bloquear(
     supabase_client,
     *,
     log_id: str,
+    auth_context: dict[str, Any],
     request_received_at: str,
     data: DrugRequest,
     drugs_considerados: list[str],
@@ -176,6 +216,9 @@ def salvar_log_sem_bloquear(
 ) -> None:
     payload = {
         "id": log_id,
+        "user_id": auth_context.get("user_id"),
+        "user_key": auth_context.get("user_key"),
+        "api_token_id": auth_context.get("api_token_id"),
         "endpoint": "/drug-interactions/check",
         "status": "error" if error_json else "success",
         "request_received_at": request_received_at,
@@ -209,9 +252,80 @@ def salvar_log_sem_bloquear(
         logger.warning("Falha ao salvar log no banco de análise %s: %s", log_id, exc)
 
 
+@app.get("/auth/")
+def auth(
+    user: str = Query(..., description="Identificador do usuário da API"),
+    x_admin_secret: str | None = Header(default=None),
+):
+    validar_permissao_emissao_token(x_admin_secret)
+    supabase_client = obter_supabase_client()
+    token_data = criar_token_usuario(supabase_client, user)
+    return {
+        "success": True,
+        "user": token_data["user"],
+        "token": token_data["token"],
+        "token_preview": token_data["token_preview"],
+        "message": (
+            "Guarde este token agora. Depois disso apenas o hash fica salvo no banco."
+        ),
+    }
+
+
+@app.get("/check-interactions/")
+def check_interactions_guard(
+    sessao: dict = Depends(obter_sessao_autenticada),
+):
+    auth_context = sessao["auth"]
+    return {
+        "success": True,
+        "authorized": True,
+        "user": auth_context.get("user_key"),
+    }
+
+
+@app.get("/logs/")
+def logs_usuario(sessao: dict = Depends(obter_sessao_autenticada)):
+    supabase_client = sessao["client"]
+    auth_context = sessao["auth"]
+    user_id = auth_context["user_id"]
+
+    access_logs = (
+        supabase_client.table("api_access_logs")
+        .select("*")
+        .eq("user_id", user_id)
+        .order("created_at", desc=True)
+        .limit(100)
+        .execute()
+    )
+    analysis_logs = (
+        supabase_client.table("analise_logs")
+        .select(
+            "id,endpoint,status,request_received_at,completed_at,created_at,"
+            "medication_input,patient_input,drugs_considered,ignored_drugs,"
+            "response_json,error_json"
+        )
+        .eq("user_id", user_id)
+        .order("created_at", desc=True)
+        .limit(100)
+        .execute()
+    )
+
+    return {
+        "success": True,
+        "user": auth_context.get("user_key"),
+        "access_logs": access_logs.data or [],
+        "analysis_logs": analysis_logs.data or [],
+    }
+
+
 @app.post("/drug-interactions/check")
-def check_interactions(data: DrugRequest):
+def check_interactions(
+    data: DrugRequest,
+    sessao: dict = Depends(obter_sessao_autenticada),
+):
     logger.info("Rota /drug-interactions/check chamada")
+    supabase_client = sessao["client"]
+    auth_context = sessao["auth"]
     request_received_at = agora_iso()
     log_id = novo_log_id()
     prompt_calls = []
@@ -285,17 +399,6 @@ def check_interactions(data: DrugRequest):
                     "Não é possível realizar a análise com apenas "
                     "um medicamento sem informações do paciente."
                 ),
-            },
-        )
-
-    try:
-        supabase_client = get_client()
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "code": "SUPABASE_CONNECTION_ERROR",
-                "message": f"Falha ao conectar ao Supabase: {exc}",
             },
         )
 
@@ -382,6 +485,7 @@ def check_interactions(data: DrugRequest):
         salvar_log_sem_bloquear(
             supabase_client,
             log_id=log_id,
+            auth_context=auth_context,
             request_received_at=request_received_at,
             data=data,
             drugs_considerados=drugs_considerados,
@@ -417,6 +521,7 @@ def check_interactions(data: DrugRequest):
         salvar_log_sem_bloquear(
             supabase_client,
             log_id=log_id,
+            auth_context=auth_context,
             request_received_at=request_received_at,
             data=data,
             drugs_considerados=drugs_considerados,
@@ -469,6 +574,7 @@ def check_interactions(data: DrugRequest):
         salvar_log_sem_bloquear(
             supabase_client,
             log_id=log_id,
+            auth_context=auth_context,
             request_received_at=request_received_at,
             data=data,
             drugs_considerados=drugs_considerados,
