@@ -2,7 +2,7 @@
 
 ParaBula é uma solução digital para apoiar a análise de segurança no uso de medicamentos. O sistema cruza medicamentos prescritos com informações oficiais de bulas brasileiras e com o perfil clínico do paciente, retornando alertas sobre interações medicamentosas e riscos clínicos.
 
-A versão atual considera medicamentos, idade, sexo biológico, gravidez e comorbidades. A análise por via de administração ainda será adicionada.
+A versão atual considera medicamentos, via de administração, dosagem, idade, sexo biológico, gravidez e comorbidades.
 
 ## Estrutura
 
@@ -39,7 +39,7 @@ Frontend:
 
 ```bash
 cd frontend
-BACKEND_URL=http://localhost:8000 npm start
+npm start
 ```
 
 Acesse:
@@ -62,39 +62,17 @@ Crie `backend/.env`:
 SUPABASE_URL=https://seu-projeto.supabase.co
 SUPABASE_KEY=sua_chave_supabase
 OPENROUTER_API_KEY=sua_chave_openrouter
+# Opcional em desenvolvimento; recomendado em produção para proteger GET /auth/
+API_TOKEN_ISSUER_SECRET=um_segredo_para_emitir_tokens
 ```
 
-## Boas Práticas de Git
+O frontend já usa o token padrão `pb_frontend_demo_token`. Para trocar a URL do
+backend ou sobrescrever esse token, crie `frontend/.env`:
 
-Branches principais:
-
-- `main`: versão estável.
-- `develop`: integração das features.
-
-Evite desenvolver diretamente em `main` ou `develop`.
-
-Convenção sugerida:
-
-```text
-feature/nome-feature
-fix/nome-correcao
-hotfix/nome-urgente
-refactor/nome-refatoracao
+```env
+BACKEND_URL=http://localhost:8000
+API_AUTH_TOKEN=pb_frontend_demo_token
 ```
 
-Fluxo comum:
-
-```bash
-git checkout develop
-git pull origin develop
-git checkout -b feature/nova-feature
-```
-
-Antes de abrir PR:
-
-```bash
-git status
-git add .
-git commit -m "feat: descreve a mudança"
-git push -u origin feature/nova-feature
-```
+Em bancos já existentes, aplique `backend/db/auth_migration.sql` para criar o
+hash do token padrão do front.

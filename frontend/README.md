@@ -13,8 +13,17 @@ npm install
 
 Com o backend rodando em `http://localhost:8000`:
 
+O front já usa o token padrão `pb_frontend_demo_token`. O arquivo
+`frontend/.env` é opcional, apenas para trocar a URL do backend ou sobrescrever
+o token:
+
+```env
+BACKEND_URL=http://localhost:8000
+API_AUTH_TOKEN=pb_frontend_demo_token
+```
+
 ```bash
-BACKEND_URL=http://localhost:8000 npm start
+npm start
 ```
 
 Acesse:
@@ -33,12 +42,12 @@ http://localhost:3000
 
 Dados clínicos atualmente considerados:
 
+- via de administração;
+- dosagem;
 - idade;
 - sexo biológico;
 - gravidez;
 - comorbidades.
-
-A análise por via de administração ainda será adicionada.
 
 ## Estrutura
 
@@ -74,7 +83,17 @@ http://localhost:8000
 E inicie o frontend com:
 
 ```bash
-BACKEND_URL=http://localhost:8000 npm start
+npm start
+```
+
+### Token padrão do front
+
+O frontend é apenas uma interface de demonstração da API e usa o token padrão
+`pb_frontend_demo_token`. Para esse token funcionar, o banco precisa ter o hash
+criado pela migração:
+
+```bash
+backend/db/auth_migration.sql
 ```
 
 ### `process.cwd failed`
@@ -84,4 +103,3 @@ Esse erro geralmente acontece quando o terminal está aberto em uma pasta que fo
 ```bash
 cd /home/carole/FACULDADE/7o\ Periodo/SD/parabula/frontend
 ```
-

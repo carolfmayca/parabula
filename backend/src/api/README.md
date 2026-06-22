@@ -25,15 +25,86 @@ http://localhost:8000/docs
 
 ## Endpoint
 
+### Autenticação
+
+```http
+GET /auth/?user=frontend-demo
+```
+
+Gera um token para o usuário informado e salva no banco apenas o par
+`(usuário, hash do token)`. O token em texto puro aparece só nessa resposta.
+
+Use o token nas demais rotas:
+
+```http
+Authorization: Bearer pb_seu_token
+```
+
+O frontend de demonstração já usa o token padrão `pb_frontend_demo_token`.
+O banco guarda apenas o hash desse token, criado por `backend/db/schema.sql`
+ou pela migração `backend/db/auth_migration.sql`.
+
+Para criar tokens adicionais:
+
+```bash
+curl "http://localhost:8000/auth/?user=outro-cliente"
+```
+
+Em bancos já existentes, aplique antes a migração
+`backend/db/auth_migration.sql`. Para bancos novos, `backend/db/schema.sql` já
+inclui essas tabelas.
+
+Em produção, defina `API_TOKEN_ISSUER_SECRET` no backend. Quando essa variável
+existe, `/auth/` só emite tokens se receber o mesmo valor no header
+`X-Admin-Secret`:
+
+```bash
+curl -H "X-Admin-Secret: seu_segredo" \
+  "http://localhost:8000/auth/?user=frontend-demo"
+```
+
+### Guarda de autorização
+
+```http
+GET /check-interactions/
+```
+
+Valida o token enviado no header `Authorization`. Se o token estiver ausente ou
+inválido, a API bloqueia a chamada e registra a tentativa em `api_access_logs`
+e em `backend/logs/access_logs.jsonl`.
+
+### Análise de interações
+
 ```http
 POST /drug-interactions/check
 ```
+
+Essa rota também exige `Authorization: Bearer <token>`.
+
+### Logs do usuário
+
+```http
+GET /logs/
+```
+
+Retorna os logs de acesso e os logs de análise do usuário dono do token.
 
 ## Entrada
 
 ```json
 {
-  "drugs": ["ibuprofeno", "losartana"],
+  "drugs": [
+    {
+      "name": "ibuprofeno",
+      "via": "oral",
+      "dose": "400mg"
+    },
+    {
+      "name": "losartana",
+      "via": "oral",
+      "dose": "50mg"
+    }
+  ],
   "patient": {
     "age": 42,
     "biological_sex": "female",
@@ -45,7 +116,10 @@ POST /drug-interactions/check
 
 | Campo | Tipo | Obrigatório | Observação |
 | --- | --- | --- | --- |
-| `drugs` | `array[string]` | Sim | mínimo de 2 medicamentos |
+| `drugs` | `array[string]` ou `array[object]` | Sim | mínimo de 2 medicamentos |
+| `drugs[].name` | `string` | Sim quando `drugs` usa objetos | princípio ativo ou nome comercial |
+| `drugs[].via` | `string` | Não | via de administração considerada na análise |
+| `drugs[].dose` | `string` ou número | Não | dosagem considerada na análise |
 | `patient.age` | `int` | Sim | use `0` quando não informado |
 | `patient.biological_sex` | `"female"`, `"male"` ou `"other"` | Sim | usado para validar gravidez |
 | `patient.is_pregnant` | `boolean` | Sim | só pode ser `true` quando `biological_sex` for `"female"` |
@@ -56,10 +130,10 @@ POST /drug-interactions/check
 - `drugs` deve conter pelo menos 2 medicamentos.
 - Medicamentos duplicados não são permitidos.
 - Medicamentos podem ser enviados por princípio ativo ou nome comercial.
+- Via de administração e dosagem são consideradas quando enviadas.
 - Se o medicamento não estiver no banco, a API tenta buscar a bula na ANVISA e cadastrá-lo.
 - Se não encontrar na ANVISA, o medicamento é desconsiderado e retornado em `ignored_drugs`.
 - Se nenhum medicamento puder ser analisado, a API retorna `NO_DRUGS_AVAILABLE`.
-- A análise por via de administração ainda será adicionada.
 
 ## Saída
 

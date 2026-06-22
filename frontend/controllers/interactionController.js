@@ -86,13 +86,15 @@ exports.results = async (req, res) => {
             }
         };
         const backendBaseUrl = (process.env.BACKEND_URL || "http://localhost:8000").replace(/\/$/, "");
+        const apiAuthToken = process.env.API_AUTH_TOKEN || "pb_frontend_demo_token";
         
         console.log(`${backendBaseUrl}/drug-interactions/check`);
         
         const response = await fetch(`${backendBaseUrl}/drug-interactions/check`, {
             method: "POST",
             headers: {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiAuthToken}`
             },
             body: JSON.stringify(payload)
         });
