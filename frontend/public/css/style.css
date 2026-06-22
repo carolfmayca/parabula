@@ -81,6 +81,32 @@ nav a{
     margin-bottom:40px;
 }
 
+.form-toast {
+    position: fixed;
+    top: 92px;
+    right: 24px;
+    z-index: 200;
+    width: min(360px, calc(100vw - 32px));
+    border: 1px solid #f2b8b5;
+    border-left: 4px solid #c9342d;
+    border-radius: 8px;
+    background: #fff4f3;
+    color: #9b1c16;
+    box-shadow: 0 14px 34px rgba(80, 20, 16, 0.16);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.45;
+    padding: 14px 16px;
+    transform: translateX(0);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.form-toast.is-hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(18px);
+}
+
 .content{
     display:flex;
     justify-content:center;

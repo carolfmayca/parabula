@@ -31,6 +31,32 @@ function parseMedicamentos(rawMedicamentos) {
     });
 }
 
+function extractApiErrorMessage(errorBody) {
+    try {
+        const parsed = JSON.parse(errorBody);
+        const detail = parsed.detail;
+
+        if (Array.isArray(detail) && detail.length > 0) {
+            return detail
+                .map((item) => item.msg || item.message)
+                .filter(Boolean)
+                .join(" ");
+        }
+
+        if (detail && typeof detail === "object") {
+            return detail.message || detail.msg || "Não foi possível validar os dados informados.";
+        }
+
+        if (typeof detail === "string") {
+            return detail;
+        }
+    } catch (_) {
+        return null;
+    }
+
+    return null;
+}
+
 exports.landing = (req, res) => {
     res.render("landing");
 };
@@ -49,12 +75,6 @@ exports.results = async (req, res) => {
     try {
         const { medicamentos, idade, biological_sex, is_pregnant, comorbidades, peso } = req.body;
         const meds = parseMedicamentos(medicamentos);
-        if (meds.length < 2) {
-            return res.status(400).render("interaction", {
-                medicamentos: meds,
-                erro: "Informe pelo menos 2 medicamentos"
-            });
-        }
         const parsedAge = idade !== undefined && idade !== "" ? parseInt(idade, 10) : null;
         let weight = null;
         if (peso !== undefined && peso !== "") {
@@ -65,6 +85,28 @@ exports.results = async (req, res) => {
                 weight = [kg, g];
             }
         }
+        const hasPatientData = Boolean(
+            parsedAge !== null ||
+            weight !== null ||
+            biological_sex ||
+            is_pregnant ||
+            (comorbidades && comorbidades.trim())
+        );
+
+        if (meds.length === 0) {
+            return res.status(400).render("interaction", {
+                medicamentos: meds,
+                erro: "Informe pelo menos 1 medicamento."
+            });
+        }
+
+        if (meds.length === 1 && !hasPatientData) {
+            return res.status(400).render("interaction", {
+                medicamentos: meds,
+                erro: "Com 1 medicamento, informe ao menos um dado do paciente."
+            });
+        }
+
         const payload = {
             drugs: meds.map((med) => ({
                 name: med.name,
@@ -102,7 +144,11 @@ exports.results = async (req, res) => {
         if (!response.ok) {
             const errorBody = await response.text();
             console.error("Detalhe do erro:", errorBody);
-            throw new Error(`API error: ${response.status} ${response.statusText}`);
+            return res.status(response.status).render("interaction", {
+                medicamentos: meds,
+                erro: extractApiErrorMessage(errorBody)
+                    || "Não foi possível validar os dados informados."
+            });
         }
         
         const apiResponse = await response.json();

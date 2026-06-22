@@ -11,6 +11,9 @@ const VIA_LABELS = {
 };
 
 let medicamentosList = [];
+const DOSE_PATTERN = /^\d+(?:[.,]\d+)?\s?(ml|mg|u)$/i;
+const DOSE_ERROR_MESSAGE = "Dose deve estar no formato número + unidade: use mg, ml ou u. Exemplos: 10mg, 5 ml, 2u.";
+const TOAST_TIMEOUT_MS = 4500;
 
 function getViaLabel(via) {
     return VIA_LABELS[via] || via;
@@ -35,6 +38,56 @@ document.addEventListener("DOMContentLoaded", function() {
     const medicamentoDoseInput = document.getElementById("medicamento-dose");
     const medicamentosList_element = document.getElementById("medicamentos-list");
     const formulario = document.querySelector("form");
+    const formError = document.getElementById("form-error");
+    let formErrorTimeout = null;
+
+    function showFormError(message) {
+        if (!formError) {
+            return;
+        }
+
+        if (formErrorTimeout) {
+            clearTimeout(formErrorTimeout);
+        }
+
+        formError.textContent = message;
+        formError.classList.remove("is-hidden");
+        formErrorTimeout = setTimeout(clearFormError, TOAST_TIMEOUT_MS);
+    }
+
+    function clearFormError() {
+        if (!formError) {
+            return;
+        }
+
+        if (formErrorTimeout) {
+            clearTimeout(formErrorTimeout);
+            formErrorTimeout = null;
+        }
+
+        formError.textContent = "";
+        formError.classList.add("is-hidden");
+    }
+
+    function isValidDose(dose) {
+        return !dose || DOSE_PATTERN.test(dose);
+    }
+
+    function hasPatientData() {
+        const idadeInput = document.getElementById("idade");
+        const pesoInput = document.getElementById("peso");
+        const comorbidadesInput = document.getElementById("comorbidades");
+        const selectedSex = document.querySelector('input[name="biological_sex"]:checked');
+        const selectedPregnancy = document.querySelector('input[name="is_pregnant"]:checked');
+
+        return Boolean(
+            (idadeInput && idadeInput.value.trim()) ||
+            (pesoInput && pesoInput.value.trim()) ||
+            selectedSex ||
+            selectedPregnancy ||
+            (comorbidadesInput && comorbidadesInput.value.trim())
+        );
+    }
 
     function updateViaSelectStyle() {
         medicamentoViaSelect.classList.toggle("is-placeholder", !medicamentoViaSelect.value);
@@ -42,6 +95,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
     medicamentoViaSelect.addEventListener("change", updateViaSelectStyle);
     updateViaSelectStyle();
+
+    if (formError && formError.textContent.trim()) {
+        showFormError(formError.textContent.trim());
+    }
 
     document.querySelectorAll(".medicine-item").forEach((item) => {
         const name = item.dataset.name;
@@ -62,10 +119,18 @@ document.addEventListener("DOMContentLoaded", function() {
         const dose = medicamentoDoseInput.value.trim() || null;
 
         if (!medicName) {
-            alert("Digite o nome do medicamento");
+            showFormError("Digite o nome do medicamento.");
+            novoMedicamentoInput.focus();
             return;
         }
 
+        if (!isValidDose(dose)) {
+            showFormError(DOSE_ERROR_MESSAGE);
+            medicamentoDoseInput.focus();
+            return;
+        }
+
+        clearFormError();
         medicamentosList.push({
             name: medicName,
             via: selectedVia,
@@ -129,8 +194,19 @@ document.addEventListener("DOMContentLoaded", function() {
     formulario.addEventListener("submit", function(e) {
         e.preventDefault();
 
-        if (medicamentosList.length < 2) {
-            alert("Informe pelo menos 2 medicamentos");
+        if (medicamentosList.length === 0) {
+            showFormError("Informe pelo menos 1 medicamento.");
+            return;
+        }
+
+        if (medicamentosList.length === 1 && !hasPatientData()) {
+            showFormError("Com 1 medicamento, informe ao menos um dado do paciente.");
+            return;
+        }
+
+        const invalidDoseMedicine = medicamentosList.find((med) => !isValidDose(med.dose));
+        if (invalidDoseMedicine) {
+            showFormError(`${DOSE_ERROR_MESSAGE} Verifique a dose de ${invalidDoseMedicine.name}.`);
             return;
         }
 

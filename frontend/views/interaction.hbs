@@ -21,6 +21,9 @@
 <main class="container">
 
     <h1>Interação Inicial</h1>
+    <div id="form-error" class="form-toast{{#unless erro}} is-hidden{{/unless}}" role="alert" aria-live="polite">
+        {{erro}}
+    </div>
     <form action="/results" method="POST">
 
         <div class="content">
