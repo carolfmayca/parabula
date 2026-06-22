@@ -99,7 +99,6 @@ exports.results = async (req, res) => {
             body: JSON.stringify(payload)
         });
         
-        console.log("Chegou aqui")
         if (!response.ok) {
             const errorBody = await response.text();
             console.error("Detalhe do erro:", errorBody);

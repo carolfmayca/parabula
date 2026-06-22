@@ -141,7 +141,8 @@ html {
     align-items: center;
 }
 .lp-shot-single {
-    width: 94%;
+    width: min(100%, 799px);
+    height: auto;
     border-radius: 16px;
     border: 1px solid #d9e3df;
     box-shadow: 0 18px 52px rgba(0, 0, 0, 0.16);
@@ -563,7 +564,7 @@ html {
 
     .lp-hero-text h1 { font-size: 36px; }
 
-    .lp-shot-single { width: min(760px, 100%); }
+    .lp-shot-single { width: min(100%, 760px); }
 
     .lp-badges {
         flex-wrap: wrap;
