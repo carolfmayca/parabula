@@ -30,7 +30,7 @@ Essa dor aparece em quatro camadas:
 - interações medicamentosas perigosas entre dois ou mais fármacos;
 - contraindicações ligadas ao perfil do paciente, como idade, sexo biológico, gravidez, lactação, comorbidades e condições metabólicas;
 - dificuldade de acessar rapidamente informação confiável da bula no ponto de decisão;
-- risco por via de administração incorreta, funcionalidade planejada para as próximas etapas do projeto.
+- risco por via de administração ou dosagem inadequada, quando essas informações são enviadas na requisição.
 
 ## O que torna a proposta diferente?
 
@@ -51,4 +51,3 @@ Modelo proposto:
 - planos de assinatura B2B para clínicas, hospitais e integrações com suporte;
 - plano enterprise com SLA, auditoria, integração com sistemas internos e requisitos de conformidade;
 - eventualmente, uma versão B2C limitada, com consultas gratuitas e recursos premium.
-
