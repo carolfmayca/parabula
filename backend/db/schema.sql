@@ -114,12 +114,68 @@ CREATE INDEX idx_bula_atualizacao_status
 
 
 -- =============================================================================
+-- api_users / api_tokens / api_access_logs
+-- Controle de uso da API por token.
+-- O token em texto puro só é retornado no momento da criação; o banco guarda hash.
+-- =============================================================================
+CREATE TABLE api_users (
+    id              UUID PRIMARY KEY,
+    user_key        TEXT NOT NULL UNIQUE
+        CHECK (user_key ~ '^[a-z0-9][a-z0-9_.-]{1,79}$'),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE api_tokens (
+    id              UUID PRIMARY KEY,
+    user_id         UUID NOT NULL REFERENCES api_users (id) ON DELETE CASCADE,
+    token_hash      TEXT NOT NULL UNIQUE
+        CHECK (length(token_hash) = 64),
+    token_preview   TEXT,
+    active          BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_api_tokens_user_id
+    ON api_tokens (user_id);
+
+CREATE INDEX idx_api_tokens_active
+    ON api_tokens (active);
+
+CREATE TABLE api_access_logs (
+    id              UUID PRIMARY KEY,
+    user_id         UUID REFERENCES api_users (id) ON DELETE SET NULL,
+    user_key        TEXT,
+    api_token_id    UUID REFERENCES api_tokens (id) ON DELETE SET NULL,
+    endpoint        TEXT NOT NULL,
+    method          TEXT NOT NULL,
+    status          TEXT NOT NULL
+        CHECK (status IN ('allowed', 'forbidden')),
+    reason          TEXT,
+    ip_address      TEXT,
+    user_agent      TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_api_access_logs_user_id
+    ON api_access_logs (user_id);
+
+CREATE INDEX idx_api_access_logs_created_at
+    ON api_access_logs (created_at);
+
+CREATE INDEX idx_api_access_logs_status
+    ON api_access_logs (status);
+
+
+-- =============================================================================
 -- analise_logs
 -- Auditoria das análises feitas pela API.
 -- Guarda entrada, prompts chamados, JSON retornado e timestamps.
 -- =============================================================================
 CREATE TABLE analise_logs (
     id                          UUID PRIMARY KEY,
+    user_id                     UUID REFERENCES api_users (id) ON DELETE SET NULL,
+    user_key                    TEXT,
+    api_token_id                UUID REFERENCES api_tokens (id) ON DELETE SET NULL,
     endpoint                    TEXT NOT NULL,
     status                      TEXT NOT NULL DEFAULT 'success'
         CHECK (status IN ('success', 'error')),
@@ -143,6 +199,9 @@ CREATE INDEX idx_analise_logs_request_received_at
 
 CREATE INDEX idx_analise_logs_status
     ON analise_logs (status);
+
+CREATE INDEX idx_analise_logs_user_id
+    ON analise_logs (user_id);
 
 
 -- Bulas efetivamente usadas para montar o contexto da análise.
