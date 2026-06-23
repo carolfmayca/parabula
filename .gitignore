@@ -1,7 +1,10 @@
 .env
 venv/
-__pycache__/
+*/__pycache__/
 .venv/
 data/DB-Anvisa2.csv.zip
 data/bulas_pdf/*
+data/*
+frontend/node_modules/
+./src/
 backend/logs/
