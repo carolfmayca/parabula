@@ -139,20 +139,37 @@ html {
     display: flex;
     justify-content: center;
     align-items: center;
-}
-.lp-shot-single {
-    width: min(100%, 799px);
-    height: auto;
-    border-radius: 16px;
-    border: 1px solid #d9e3df;
-    box-shadow: 0 18px 52px rgba(0, 0, 0, 0.16);
-    background: #fff;
-    transition: .3s ease;
+    position: relative;
 }
 
-.lp-shot-single:hover {
-    transform: translateY(-4px);
+.lp-hero-blob {
+    margin-top: -400px;
+    margin-bottom: 300px;
+    margin-left: -80px;
+    margin-right: 200px;
+    position: absolute;
+    inset: 0;
+    width: 900px;
+    height: 1100px;
+    object-fit: contain;
+    z-index: 0;
+    pointer-events: none;
+    user-select: none;
 }
+
+.lp-shot-single {
+    position: relative;
+    z-index: 1;
+    margin-top: -20px;
+    width: min(100%, 560px);
+    height: auto;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+    transition: transform .3s ease;
+}
+
 
 .lp-mockup-card {
     background: #fff;

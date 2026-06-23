@@ -128,17 +128,17 @@
                         <span class="severity-dot {{severityClass this.severity}}"></span>
                         <strong>{{severityText this.severity}}</strong>
                     </div>
-                    <p>{{../apiResponse.interactions.summary.description}}</p>
+                    <p>{{capitalizeFirst ../apiResponse.interactions.summary.description}}</p>
                 </div>
                 <button type="button" class="details-link" data-target="detail-interaction-{{@index}}">Ver detalhes <span class="details-arrow">▾</span></button>
             </article>
             <div class="interaction-detail-panel" id="detail-interaction-{{@index}}">
-                <p>{{this.description}}</p>
+                <p>{{capitalizeFirst this.description}}</p>
             </div>
             {{/each}}
         {{else}}
             <div class="empty-state">
-                {{apiResponse.interactions.summary.description}}
+                {{capitalizeFirst apiResponse.interactions.summary.description}}
             </div>
         {{/if}}
     </section>
