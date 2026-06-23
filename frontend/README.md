@@ -69,37 +69,3 @@ frontend/
     ├── results.hbs
     └── layouts/
 ```
-
-## Problemas Comuns
-
-### Frontend não conecta ao backend
-
-Confirme se o backend está rodando:
-
-```text
-http://localhost:8000
-```
-
-E inicie o frontend com:
-
-```bash
-npm start
-```
-
-### Token padrão do front
-
-O frontend é apenas uma interface de demonstração da API e usa o token padrão
-`pb_frontend_demo_token`. Para esse token funcionar, o banco precisa ter o hash
-criado pela migração:
-
-```bash
-backend/db/auth_migration.sql
-```
-
-### `process.cwd failed`
-
-Esse erro geralmente acontece quando o terminal está aberto em uma pasta que foi movida ou apagada. Abra um novo terminal e entre novamente na pasta:
-
-```bash
-cd /home/carole/FACULDADE/7o\ Periodo/SD/parabula/frontend
-```
