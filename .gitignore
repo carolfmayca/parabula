@@ -5,6 +5,6 @@ venv/
 data/DB-Anvisa2.csv.zip
 data/bulas_pdf/*
 data/*
-frontend/node_modules/
+/frontend/node_modules/
 ./src/
 backend/logs/
