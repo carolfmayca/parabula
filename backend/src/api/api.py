@@ -141,15 +141,33 @@ def deduplicar_nomes(nomes: list[str]) -> list[str]:
 def montar_contexto_medicamentos_considerados(
     drogas_requisitadas,
     drugs_considerados: list[str],
+    bulas_usadas: list[dict[str, Any]] | None = None,
 ) -> str:
     nomes_considerados = {drug.lower() for drug in drugs_considerados}
+    oficial_por_requisitado = {}
+    if bulas_usadas:
+        oficial_por_requisitado = {
+            str(bula.get("drug_requested", "")).lower(): str(
+                bula.get("principio_ativo", "")
+            ).lower()
+            for bula in bulas_usadas
+            if bula.get("drug_requested") and bula.get("principio_ativo")
+        }
+
     linhas = []
+    nomes_listados = set()
 
     for drug in drogas_requisitadas:
-        if drug.name not in nomes_considerados and drug.name.lower() not in nomes_considerados:
+        nome_requisitado = drug.name.lower()
+        nome_oficial = oficial_por_requisitado.get(nome_requisitado, nome_requisitado)
+
+        if nome_oficial not in nomes_considerados:
             continue
 
-        linha = f"- {drug.name}"
+        linha = f"- {nome_oficial}"
+        if nome_oficial != nome_requisitado:
+            linha += f" (informado como: {drug.name})"
+
         detalhes = []
         if drug.via:
             detalhes.append(f"via: {drug.via}")
@@ -157,7 +175,13 @@ def montar_contexto_medicamentos_considerados(
             detalhes.append(f"dose: {drug.dose}")
         if detalhes:
             linha += f" ({', '.join(detalhes)})"
+
         linhas.append(linha)
+        nomes_listados.add(nome_oficial)
+
+    for drug in drugs_considerados:
+        if drug.lower() not in nomes_listados:
+            linhas.append(f"- {drug}")
 
     if linhas:
         return "\n".join(linhas)
@@ -431,12 +455,18 @@ def check_interactions(
     texto_interacoes = montar_bulas_texto(
         drugs_considerados,
         supabase_client,
-        ["INTERAÇÕES MEDICAMENTOSAS", "POSOLOGIA E MODO DE USAR"],
+        [
+            "CONTRAINDICAÇÕES",
+            "ADVERTÊNCIAS E PRECAUÇÕES",
+            "INTERAÇÕES MEDICAMENTOSAS",
+            "POSOLOGIA E MODO DE USAR",
+        ],
     )
 
     contexto_medicamentos_str = montar_contexto_medicamentos_considerados(
         drugs,
         drugs_considerados,
+        bulas_usadas,
     )
 
     logger.info("Informações de bula montadas")
