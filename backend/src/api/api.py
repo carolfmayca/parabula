@@ -460,70 +460,6 @@ def check_interactions(
 
     medication_input = [drug.model_dump_for_log() for drug in drugs]
     patient_input = patient.model_dump()
-    resultado_em_cache = buscar_resultado_analise_local(
-        medication_input=medication_input,
-        patient_input=patient_input,
-        auth_context=auth_context,
-    )
-    if resultado_em_cache:
-        logger.info(
-            "Resultado completo reaproveitado do log de análise %s",
-            resultado_em_cache["log_id"],
-        )
-        return resultado_em_cache["response_json"]
-
-    interacoes_em_cache = None
-    if num_drugs >= 2:
-        interacoes_em_cache = buscar_interacoes_analise_local(
-            medication_input=medication_input,
-            auth_context=auth_context,
-        )
-
-    riscos_em_cache = None
-    if has_patient:
-        riscos_em_cache = buscar_riscos_analise_local(
-            medication_input=medication_input,
-            patient_input=patient_input,
-            auth_context=auth_context,
-        )
-
-    if num_drugs >= 2 and not has_patient and interacoes_em_cache:
-        logger.info(
-            "Interações reaproveitadas do log de análise %s",
-            interacoes_em_cache["log_id"],
-        )
-        return montar_resposta_reaproveitada(
-            log_id=interacoes_em_cache["log_id"],
-            medication_input=medication_input,
-            response_base=interacoes_em_cache["response_json"],
-            interactions=interacoes_em_cache["interactions"],
-        )
-
-    if num_drugs == 1 and has_patient and riscos_em_cache:
-        logger.info(
-            "Riscos clínicos reaproveitados do log de análise %s",
-            riscos_em_cache["log_id"],
-        )
-        return montar_resposta_reaproveitada(
-            log_id=riscos_em_cache["log_id"],
-            medication_input=medication_input,
-            response_base=riscos_em_cache["response_json"],
-            clinical_risks=riscos_em_cache["clinical_risks"],
-        )
-
-    if num_drugs >= 2 and has_patient and interacoes_em_cache and riscos_em_cache:
-        logger.info(
-            "Interações e riscos clínicos reaproveitados dos logs %s e %s",
-            interacoes_em_cache["log_id"],
-            riscos_em_cache["log_id"],
-        )
-        return montar_resposta_reaproveitada(
-            log_id=riscos_em_cache["log_id"],
-            medication_input=medication_input,
-            response_base=riscos_em_cache["response_json"],
-            interactions=interacoes_em_cache["interactions"],
-            clinical_risks=riscos_em_cache["clinical_risks"],
-        )
 
     resultado_riscos_bulas = montar_bulas_texto(
         drug_names,
@@ -549,6 +485,75 @@ def check_interactions(
             },
         )
 
+    num_drugs_considerados = len(drugs_considerados)
+    resultado_em_cache = buscar_resultado_analise_local(
+        medication_input=medication_input,
+        patient_input=patient_input,
+        bulas_usadas=bulas_usadas,
+        auth_context=auth_context,
+    )
+    if resultado_em_cache:
+        logger.info(
+            "Resultado completo reaproveitado do log de análise %s",
+            resultado_em_cache["log_id"],
+        )
+        return resultado_em_cache["response_json"]
+
+    interacoes_em_cache = None
+    if num_drugs_considerados >= 2:
+        interacoes_em_cache = buscar_interacoes_analise_local(
+            medication_input=medication_input,
+            bulas_usadas=bulas_usadas,
+            auth_context=auth_context,
+        )
+
+    riscos_em_cache = None
+    if has_patient:
+        riscos_em_cache = buscar_riscos_analise_local(
+            medication_input=medication_input,
+            patient_input=patient_input,
+            bulas_usadas=bulas_usadas,
+            auth_context=auth_context,
+        )
+
+    if num_drugs_considerados >= 2 and not has_patient and interacoes_em_cache:
+        logger.info(
+            "Interações reaproveitadas do log de análise %s",
+            interacoes_em_cache["log_id"],
+        )
+        return montar_resposta_reaproveitada(
+            log_id=interacoes_em_cache["log_id"],
+            medication_input=medication_input,
+            response_base=interacoes_em_cache["response_json"],
+            interactions=interacoes_em_cache["interactions"],
+        )
+
+    if num_drugs_considerados == 1 and has_patient and riscos_em_cache:
+        logger.info(
+            "Riscos clínicos reaproveitados do log de análise %s",
+            riscos_em_cache["log_id"],
+        )
+        return montar_resposta_reaproveitada(
+            log_id=riscos_em_cache["log_id"],
+            medication_input=medication_input,
+            response_base=riscos_em_cache["response_json"],
+            clinical_risks=riscos_em_cache["clinical_risks"],
+        )
+
+    if num_drugs_considerados >= 2 and has_patient and interacoes_em_cache and riscos_em_cache:
+        logger.info(
+            "Interações e riscos clínicos reaproveitados dos logs %s e %s",
+            interacoes_em_cache["log_id"],
+            riscos_em_cache["log_id"],
+        )
+        return montar_resposta_reaproveitada(
+            log_id=riscos_em_cache["log_id"],
+            medication_input=medication_input,
+            response_base=riscos_em_cache["response_json"],
+            interactions=interacoes_em_cache["interactions"],
+            clinical_risks=riscos_em_cache["clinical_risks"],
+        )
+
     texto_interacoes = montar_bulas_texto(
         drugs_considerados,
         supabase_client,
@@ -569,7 +574,6 @@ def check_interactions(
     logger.info("Informações de bula montadas")
 
     client = OpenRouter(api_key=os.getenv("OPENROUTER_API_KEY"))
-    num_drugs_considerados = len(drugs_considerados)
 
     if num_drugs_considerados == 1 and not has_patient:
         raise HTTPException(

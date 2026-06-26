@@ -67,6 +67,36 @@ def montar_chave_medicamentos(
     )
 
 
+def montar_chave_bulas(bulas_usadas: list[dict[str, Any]]) -> str:
+    registros = [
+        {
+            "bula_medicamento_id": bula.get("bula_medicamento_id"),
+            "medicamento_id": bula.get("medicamento_id"),
+            "principio_ativo": bula.get("principio_ativo"),
+            "drug_requested": bula.get("drug_requested"),
+        }
+        for bula in bulas_usadas
+    ]
+    registros_normalizados = sorted(
+        (_normalizar_para_chave(registro) for registro in registros),
+        key=lambda registro: json.dumps(
+            registro,
+            ensure_ascii=False,
+            sort_keys=True,
+        ),
+    )
+    return json.dumps(registros_normalizados, ensure_ascii=False, sort_keys=True)
+
+
+def _bulas_usadas_iguais(
+    log: dict[str, Any],
+    bulas_usadas: list[dict[str, Any]],
+) -> bool:
+    return montar_chave_bulas(log.get("bulas_usadas") or []) == montar_chave_bulas(
+        bulas_usadas
+    )
+
+
 def _log_permitido_para_usuario(
     log: dict[str, Any],
     auth_context: dict[str, Any],
@@ -111,11 +141,15 @@ def buscar_resultado_analise_local(
     *,
     medication_input: list[dict[str, Any]],
     patient_input: dict[str, Any],
+    bulas_usadas: list[dict[str, Any]],
     auth_context: dict[str, Any],
 ) -> dict[str, Any] | None:
     chave_atual = montar_chave_analise(medication_input, patient_input)
 
     for log, response_json in _iterar_logs_analise_validos(auth_context):
+        if not _bulas_usadas_iguais(log, bulas_usadas):
+            continue
+
         try:
             chave_log = montar_chave_analise(
                 log.get("medication_input") or [],
@@ -136,12 +170,15 @@ def buscar_resultado_analise_local(
 def buscar_interacoes_analise_local(
     *,
     medication_input: list[dict[str, Any]],
+    bulas_usadas: list[dict[str, Any]],
     auth_context: dict[str, Any],
 ) -> dict[str, Any] | None:
     chave_atual = montar_chave_medicamentos(medication_input)
 
     for log, response_json in _iterar_logs_analise_validos(auth_context):
         if "interactions" not in response_json:
+            continue
+        if not _bulas_usadas_iguais(log, bulas_usadas):
             continue
 
         try:
@@ -163,12 +200,15 @@ def buscar_riscos_analise_local(
     *,
     medication_input: list[dict[str, Any]],
     patient_input: dict[str, Any],
+    bulas_usadas: list[dict[str, Any]],
     auth_context: dict[str, Any],
 ) -> dict[str, Any] | None:
     chave_atual = montar_chave_analise(medication_input, patient_input)
 
     for log, response_json in _iterar_logs_analise_validos(auth_context):
         if "clinical_risks" not in response_json:
+            continue
+        if not _bulas_usadas_iguais(log, bulas_usadas):
             continue
 
         try:
