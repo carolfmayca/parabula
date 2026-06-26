@@ -14,6 +14,9 @@ try:
     )
     from backend.src.api.audit_logs import (
         agora_iso,
+        buscar_interacoes_analise_local,
+        buscar_resultado_analise_local,
+        buscar_riscos_analise_local,
         novo_log_id,
         registrar_prompt,
         salvar_bulas_usadas,
@@ -33,6 +36,9 @@ except ModuleNotFoundError:
     )
     from src.api.audit_logs import (
         agora_iso,
+        buscar_interacoes_analise_local,
+        buscar_resultado_analise_local,
+        buscar_riscos_analise_local,
         novo_log_id,
         registrar_prompt,
         salvar_bulas_usadas,
@@ -276,6 +282,30 @@ def salvar_log_sem_bloquear(
         logger.warning("Falha ao salvar log no banco de análise %s: %s", log_id, exc)
 
 
+def montar_resposta_reaproveitada(
+    *,
+    log_id: str | None,
+    medication_input: list[dict[str, Any]],
+    response_base: dict[str, Any],
+    interactions: dict[str, Any] | None = None,
+    clinical_risks: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    response_json = {
+        "success": True,
+        "analysis_log_id": log_id,
+        "drugs": medication_input,
+        "drugs_considered": response_base.get("drugs_considered", []),
+        "ignored_drugs": response_base.get("ignored_drugs", []),
+    }
+
+    if interactions is not None:
+        response_json["interactions"] = interactions
+    if clinical_risks is not None:
+        response_json["clinical_risks"] = clinical_risks
+
+    return response_json
+
+
 @app.get("/auth/")
 def auth(
     user: str = Query(..., description="Identificador do usuário da API"),
@@ -428,6 +458,73 @@ def check_interactions(
                 },
             )
 
+    medication_input = [drug.model_dump_for_log() for drug in drugs]
+    patient_input = patient.model_dump()
+    resultado_em_cache = buscar_resultado_analise_local(
+        medication_input=medication_input,
+        patient_input=patient_input,
+        auth_context=auth_context,
+    )
+    if resultado_em_cache:
+        logger.info(
+            "Resultado completo reaproveitado do log de análise %s",
+            resultado_em_cache["log_id"],
+        )
+        return resultado_em_cache["response_json"]
+
+    interacoes_em_cache = None
+    if num_drugs >= 2:
+        interacoes_em_cache = buscar_interacoes_analise_local(
+            medication_input=medication_input,
+            auth_context=auth_context,
+        )
+
+    riscos_em_cache = None
+    if has_patient:
+        riscos_em_cache = buscar_riscos_analise_local(
+            medication_input=medication_input,
+            patient_input=patient_input,
+            auth_context=auth_context,
+        )
+
+    if num_drugs >= 2 and not has_patient and interacoes_em_cache:
+        logger.info(
+            "Interações reaproveitadas do log de análise %s",
+            interacoes_em_cache["log_id"],
+        )
+        return montar_resposta_reaproveitada(
+            log_id=interacoes_em_cache["log_id"],
+            medication_input=medication_input,
+            response_base=interacoes_em_cache["response_json"],
+            interactions=interacoes_em_cache["interactions"],
+        )
+
+    if num_drugs == 1 and has_patient and riscos_em_cache:
+        logger.info(
+            "Riscos clínicos reaproveitados do log de análise %s",
+            riscos_em_cache["log_id"],
+        )
+        return montar_resposta_reaproveitada(
+            log_id=riscos_em_cache["log_id"],
+            medication_input=medication_input,
+            response_base=riscos_em_cache["response_json"],
+            clinical_risks=riscos_em_cache["clinical_risks"],
+        )
+
+    if num_drugs >= 2 and has_patient and interacoes_em_cache and riscos_em_cache:
+        logger.info(
+            "Interações e riscos clínicos reaproveitados dos logs %s e %s",
+            interacoes_em_cache["log_id"],
+            riscos_em_cache["log_id"],
+        )
+        return montar_resposta_reaproveitada(
+            log_id=riscos_em_cache["log_id"],
+            medication_input=medication_input,
+            response_base=riscos_em_cache["response_json"],
+            interactions=interacoes_em_cache["interactions"],
+            clinical_risks=riscos_em_cache["clinical_risks"],
+        )
+
     resultado_riscos_bulas = montar_bulas_texto(
         drug_names,
         supabase_client,
@@ -489,18 +586,25 @@ def check_interactions(
 
     # Cenario 2: 1 medicamento disponível e dados do paciente
     if num_drugs_considerados == 1 and has_patient:
-        prompt_riscos = prompt_riscos_clinicos(
-            texto_riscos,
-            perfil_paciente,
-            contexto_medicamentos_str,
-        )
-        resultado_riscos = chamar_prompt_logado(
-            client,
-            prompt_calls,
-            name="riscos_clinicos",
-            prompt=prompt_riscos,
-        )
-        resultado_riscos = ajustar_riscos_saida(resultado_riscos)
+        if riscos_em_cache:
+            logger.info(
+                "Riscos clínicos reaproveitados do log de análise %s",
+                riscos_em_cache["log_id"],
+            )
+            resultado_riscos = riscos_em_cache["clinical_risks"]
+        else:
+            prompt_riscos = prompt_riscos_clinicos(
+                texto_riscos,
+                perfil_paciente,
+                contexto_medicamentos_str,
+            )
+            resultado_riscos = chamar_prompt_logado(
+                client,
+                prompt_calls,
+                name="riscos_clinicos",
+                prompt=prompt_riscos,
+            )
+            resultado_riscos = ajustar_riscos_saida(resultado_riscos)
 
         response_json = {
             "success": True,
@@ -566,26 +670,44 @@ def check_interactions(
 
     # Cenario 4: 2 ou + medicamentos disponíveis com dados do paciente
     if num_drugs_considerados >= 2 and has_patient:
-        prompt_interacao = prompt_interacoes(texto_interacoes, contexto_medicamentos_str)
-        prompt_riscos = prompt_riscos_clinicos(
-            texto_riscos,
-            perfil_paciente,
-            contexto_medicamentos_str,
-        )
-        resultado_interacoes = chamar_prompt_logado(
-            client,
-            prompt_calls,
-            name="interacoes_medicamentosas",
-            prompt=prompt_interacao,
-        )
-        resultado_riscos = chamar_prompt_logado(
-            client,
-            prompt_calls,
-            name="riscos_clinicos",
-            prompt=prompt_riscos,
-        )
-        resultado_interacoes = ajustar_interacoes_saida(resultado_interacoes)
-        resultado_riscos = ajustar_riscos_saida(resultado_riscos)
+        if interacoes_em_cache:
+            logger.info(
+                "Interações reaproveitadas do log de análise %s",
+                interacoes_em_cache["log_id"],
+            )
+            resultado_interacoes = interacoes_em_cache["interactions"]
+        else:
+            prompt_interacao = prompt_interacoes(
+                texto_interacoes,
+                contexto_medicamentos_str,
+            )
+            resultado_interacoes = chamar_prompt_logado(
+                client,
+                prompt_calls,
+                name="interacoes_medicamentosas",
+                prompt=prompt_interacao,
+            )
+            resultado_interacoes = ajustar_interacoes_saida(resultado_interacoes)
+
+        if riscos_em_cache:
+            logger.info(
+                "Riscos clínicos reaproveitados do log de análise %s",
+                riscos_em_cache["log_id"],
+            )
+            resultado_riscos = riscos_em_cache["clinical_risks"]
+        else:
+            prompt_riscos = prompt_riscos_clinicos(
+                texto_riscos,
+                perfil_paciente,
+                contexto_medicamentos_str,
+            )
+            resultado_riscos = chamar_prompt_logado(
+                client,
+                prompt_calls,
+                name="riscos_clinicos",
+                prompt=prompt_riscos,
+            )
+            resultado_riscos = ajustar_riscos_saida(resultado_riscos)
 
         response_json = {
             "success": True,
