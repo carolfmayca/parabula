@@ -206,6 +206,8 @@ def chamar_prompt_logado(
     try:
         response_json = chamar_modelo(client, prompt)
     except Exception as exc:
+        error_type = exc.__class__.__name__
+        error_message = str(exc)
         registrar_prompt(
             prompt_calls,
             name=name,
@@ -213,11 +215,38 @@ def chamar_prompt_logado(
             started_at=started_at,
             ended_at=agora_iso(),
             error={
-                "type": exc.__class__.__name__,
-                "message": str(exc),
+                "type": error_type,
+                "message": error_message,
             },
         )
-        raise
+
+        if isinstance(exc, HTTPException):
+            raise
+
+        if error_type == "TooManyRequestsResponseError":
+            raise HTTPException(
+                status_code=429,
+                detail={
+                    "code": "MODEL_RATE_LIMIT",
+                    "message": (
+                        "O provedor do modelo atingiu o limite de requisições. "
+                        "Aguarde alguns instantes e tente novamente."
+                    ),
+                    "provider_error": error_message,
+                },
+            ) from exc
+
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "code": "MODEL_PROVIDER_ERROR",
+                "message": (
+                    "Não foi possível concluir a análise com o modelo no momento. "
+                    "Tente novamente em instantes."
+                ),
+                "provider_error": error_message,
+            },
+        ) from exc
 
     registrar_prompt(
         prompt_calls,
