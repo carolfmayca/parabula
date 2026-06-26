@@ -981,3 +981,242 @@ textarea{
     font-size: 14px;
     color: #666;
 }
+
+/* DOCUMENTAÇÃO */
+
+nav a.is-active {
+    color: #004d40;
+    font-weight: 700;
+}
+
+.doc-page {
+    min-height: calc(100vh - 68px);
+    background: linear-gradient(180deg, #f2fbf8 0%, #f7f9fb 45%, #ffffff 100%);
+    color: #0d1f1c;
+}
+
+.doc-hero {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 58px 24px 34px;
+}
+
+.doc-kicker {
+    display: inline-block;
+    margin-bottom: 12px;
+    border: 1px solid #b2d8d1;
+    border-radius: 999px;
+    background: #edf7f5;
+    color: #004d40;
+    padding: 7px 13px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.doc-hero h1 {
+    font-family: 'Poppins', sans-serif;
+    color: #004d40;
+    font-size: 46px;
+    line-height: 1.08;
+    margin-bottom: 14px;
+}
+
+.doc-hero p {
+    max-width: 780px;
+    color: #3f665e;
+    font-size: 18px;
+    line-height: 1.65;
+}
+
+.doc-shell {
+    display: grid;
+    grid-template-columns: 230px minmax(0, 1fr);
+    gap: 28px;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 24px 72px;
+    align-items: start;
+}
+
+.doc-toc {
+    position: sticky;
+    top: 92px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border: 1px solid #d6e8e3;
+    border-radius: 8px;
+    background: #ffffff;
+    padding: 12px;
+    box-shadow: 0 10px 30px rgba(0, 77, 64, 0.08);
+}
+
+.doc-toc a {
+    border-radius: 7px;
+    color: #31544d;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    padding: 10px 11px;
+}
+
+.doc-toc a:hover {
+    background: #edf7f5;
+    color: #004d40;
+}
+
+.doc-content {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.doc-section {
+    border: 1px solid #dceae6;
+    border-radius: 8px;
+    background: #ffffff;
+    padding: 28px;
+    box-shadow: 0 8px 24px rgba(0, 77, 64, 0.06);
+    scroll-margin-top: 90px;
+}
+
+.doc-section h2 {
+    font-family: 'Poppins', sans-serif;
+    color: #004d40;
+    font-size: 26px;
+    margin-bottom: 14px;
+}
+
+.doc-section h3 {
+    color: #14453e;
+    font-size: 18px;
+    margin: 22px 0 8px;
+}
+
+.doc-section p,
+.doc-section li {
+    color: #3d514d;
+    font-size: 15px;
+    line-height: 1.72;
+}
+
+.doc-section p + p {
+    margin-top: 10px;
+}
+
+.doc-steps {
+    margin: 18px 0 0 20px;
+}
+
+.doc-steps li {
+    margin-bottom: 8px;
+    padding-left: 4px;
+}
+
+.doc-flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.doc-flow span {
+    border: 1px solid #b2d8d1;
+    border-radius: 7px;
+    background: #edf7f5;
+    color: #004d40;
+    padding: 9px 12px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.doc-flow strong {
+    color: #3f7761;
+}
+
+.doc-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.doc-grid article {
+    border: 1px solid #e2eee9;
+    border-radius: 8px;
+    background: #f9fdfb;
+    padding: 18px;
+}
+
+.doc-grid article h3 {
+    margin-top: 0;
+}
+
+.doc-section code {
+    border: 1px solid #d6e8e3;
+    border-radius: 5px;
+    background: #edf7f5;
+    color: #004d40;
+    padding: 2px 5px;
+    font-family: monospace;
+    font-size: 0.94em;
+}
+
+.doc-section pre {
+    overflow-x: auto;
+    border: 1px solid #d6e8e3;
+    border-radius: 8px;
+    background: #0d1f1c;
+    padding: 16px;
+    margin: 12px 0 18px;
+}
+
+.doc-section pre code {
+    border: 0;
+    background: transparent;
+    color: #dff5ef;
+    padding: 0;
+    line-height: 1.65;
+}
+
+@media (max-width: 980px) {
+    .navbar {
+        padding: 0 24px;
+    }
+
+    nav {
+        gap: 18px;
+    }
+
+    .doc-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .doc-toc {
+        position: static;
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 760px) {
+    .navbar nav {
+        display: none;
+    }
+
+    .doc-hero h1 {
+        font-size: 36px;
+    }
+
+    .doc-hero p {
+        font-size: 16px;
+    }
+
+    .doc-section {
+        padding: 22px;
+    }
+
+    .doc-grid {
+        grid-template-columns: 1fr;
+    }
+}

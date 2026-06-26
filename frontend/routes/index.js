@@ -5,6 +5,7 @@ const interactionController = require("../controllers/interactionController");
 
 router.get("/", interactionController.landing);
 router.get("/equipe", interactionController.team);
+router.get("/documentacao", interactionController.documentation);
 router.post("/results", interactionController.results);
 router.get("/interagir", interactionController.index);
 

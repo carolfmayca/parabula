@@ -39,7 +39,7 @@ html {
 
 .lp-nav {
     display: flex;
-    gap: 36px;
+    gap: 24px;
 }
 
 .lp-nav a {

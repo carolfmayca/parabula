@@ -1,0 +1,133 @@
+<header class="navbar">
+    <a href="/" class="logo">
+        <img src="/img/logo.svg" alt="ParaBula">
+        <span>ParaBula</span>
+    </a>
+
+    <nav>
+        <a href="/#funcionalidades">Funcionalidades</a>
+        <a href="/#como-funciona">Como Funciona</a>
+        <a href="/#beneficios">Benefícios</a>
+        <a href="/equipe">Equipe</a>
+        <a href="/documentacao" class="is-active">Documentação</a>
+    </nav>
+
+    <a href="/interagir" class="btn-top">Interagir</a>
+</header>
+
+<main class="doc-page">
+    <section class="doc-hero">
+        <span class="doc-kicker">Documentação técnica</span>
+        <h1>ParaBula</h1>
+        <p>Sistema de apoio à análise de interações medicamentosas e riscos clínicos com base em bulas oficiais e no perfil do paciente.</p>
+    </section>
+
+    <section class="doc-shell">
+        <aside class="doc-toc" aria-label="Sumário da documentação">
+            <a href="#resumo">Resumo</a>
+            <a href="#arquitetura">Arquitetura</a>
+            <a href="#tecnologias">Tecnologias</a>
+            <a href="#componentes">Componentes</a>
+            <a href="#execucao">Execução</a>
+            <a href="#consideracoes">Considerações</a>
+        </aside>
+
+        <div class="doc-content">
+            <section class="doc-section" id="resumo">
+                <h2>1. Resumo</h2>
+                <p>O ParaBula recebe medicamentos e, quando disponível, o perfil clínico do paciente para retornar alertas sobre interações medicamentosas e riscos clínicos. A análise considera informações oficiais de bulas brasileiras, via de administração, dose, idade, peso, sexo biológico, gravidez e comorbidades.</p>
+                <p>O sistema serve como apoio à consulta e à tomada de decisão, sem substituir a avaliação clínica de um profissional de saúde.</p>
+            </section>
+
+            <section class="doc-section" id="arquitetura">
+                <h2>2. Arquitetura do Sistema</h2>
+                <p>A aplicação é dividida em frontend e backend. O frontend renderiza a interface web e envia as requisições. O backend valida os dados, autentica o acesso, recupera bulas, consulta logs, chama o modelo de linguagem e registra os resultados.</p>
+
+                <div class="doc-flow">
+                    <span>Frontend</span>
+                    <strong>→</strong>
+                    <span>API FastAPI</span>
+                    <strong>→</strong>
+                    <span>Supabase e ANVISA</span>
+                    <strong>→</strong>
+                    <span>OpenRouter</span>
+                    <strong>→</strong>
+                    <span>Resultados</span>
+                </div>
+
+                <ol class="doc-steps">
+                    <li>O usuário acessa a interface em <code>http://localhost:3000</code>.</li>
+                    <li>O frontend envia os medicamentos e os dados do paciente para <code>POST /drug-interactions/check</code>.</li>
+                    <li>O backend valida a entrada, recupera as bulas vigentes e verifica se já existe resultado válido nos logs.</li>
+                    <li>Quando necessário, o backend monta prompts e chama o modelo via OpenRouter.</li>
+                    <li>A resposta é salva em logs locais e no banco, e o frontend exibe o resultado.</li>
+                </ol>
+            </section>
+
+            <section class="doc-section" id="tecnologias">
+                <h2>3. Tecnologias Utilizadas</h2>
+                <div class="doc-grid">
+                    <article>
+                        <h3>Frontend</h3>
+                        <p>Node.js, Express.js, Express Handlebars, HTML, CSS e JavaScript.</p>
+                    </article>
+                    <article>
+                        <h3>Backend</h3>
+                        <p>Python, FastAPI, Uvicorn, Pydantic, Supabase, OpenRouter, PyPDF2, HTTPX e Cloudscraper.</p>
+                    </article>
+                    <article>
+                        <h3>Banco e logs</h3>
+                        <p>PostgreSQL via Supabase, tabelas de medicamentos, bulas, tokens e logs de análise, além de arquivos JSONL locais.</p>
+                    </article>
+                    <article>
+                        <h3>Serviços externos</h3>
+                        <p>ANVISA como fonte de bulas e OpenRouter para acesso ao modelo de linguagem.</p>
+                    </article>
+                </div>
+            </section>
+
+            <section class="doc-section" id="componentes">
+                <h2>4. Funcionamento dos Componentes</h2>
+
+                <h3>Frontend</h3>
+                <p>A pasta <code>frontend/</code> contém as rotas, controllers, views, scripts públicos e estilos. O controller de interação monta o payload e envia os dados para o backend.</p>
+
+                <h3>Backend/API</h3>
+                <p>A API expõe endpoints para autenticação, validação de token, análise de interações e consulta de logs. O endpoint principal valida medicamentos, paciente, dose, idade, peso, gravidez e duplicidade de medicamentos.</p>
+
+                <h3>Cache por logs</h3>
+                <p>O sistema reaproveita resultados já calculados. Interações são reaproveitadas quando os medicamentos e as bulas usadas são os mesmos. Riscos clínicos são reaproveitados quando medicamentos, perfil do paciente e bulas usadas também coincidem.</p>
+
+                <h3>Processamento de bulas</h3>
+                <p>O pipeline coleta bulas da ANVISA, converte PDFs para JSON e carrega os dados no Supabase. Também há importação automática quando a API recebe um medicamento desconhecido.</p>
+
+                <h3>Banco de dados</h3>
+                <p>O banco guarda medicamentos, aliases, bulas, usuários, tokens, logs de acesso e logs de análise. A tabela <code>analise_log_bula</code> relaciona cada análise às bulas usadas.</p>
+            </section>
+
+            <section class="doc-section" id="execucao">
+                <h2>5. Como Executar o Sistema</h2>
+
+                <h3>Backend</h3>
+                <pre><code>cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python -m uvicorn src.api.api:app --reload --host 0.0.0.0 --port 8000</code></pre>
+
+                <h3>Frontend</h3>
+                <pre><code>cd frontend
+npm install
+npm start</code></pre>
+
+                <p>Acesse a aplicação em <code>http://localhost:3000</code> e a documentação interativa da API em <code>http://localhost:8000/docs</code>.</p>
+            </section>
+
+            <section class="doc-section" id="consideracoes">
+                <h2>6. Considerações Finais</h2>
+                <p>O ParaBula foi desenvolvido com uma arquitetura modular, separando interface, API, processamento de bulas, banco de dados e integração com modelo de linguagem. Essa separação facilita manutenção, evolução e testes.</p>
+                <p>O uso de bulas oficiais torna a análise mais rastreável, enquanto os logs permitem auditoria e reaproveitamento seguro de resultados já calculados.</p>
+            </section>
+        </div>
+    </section>
+</main>

@@ -65,6 +65,10 @@ exports.team = (req, res) => {
     res.render("team");
 };
 
+exports.documentation = (req, res) => {
+    res.render("documentation");
+};
+
 exports.index = (req, res) => {
     res.render("interaction", {
         medicamentos: []
